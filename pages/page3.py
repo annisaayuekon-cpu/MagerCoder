@@ -1,72 +1,160 @@
 import streamlit as st
 import pandas as pd
-import os
-import plotly.express as px
+import altair as alt
 
-st.set_page_config(layout="wide")
+# -------------------------------------------------------------------
+# Halaman 3 – Inflasi dan Indeks Harga Konsumen (IHK/CPI)
+# -------------------------------------------------------------------
 
-st.title("🔥 Inflasi dan Harga Konsumen — Peta Dunia + Time Series")
+st.set_page_config(page_title="Inflasi & IHK", layout="wide")
+st.title("📈 Analisis Inflasi dan Indeks Harga Konsumen (IHK/CPI)")
+
 st.write(
-    "Halaman ini menampilkan data Inflasi dan Harga Konsumen dalam bentuk peta dunia dan grafik time series "
+    """
+    Halaman ini menampilkan visualisasi data **inflasi** dan **indeks harga konsumen (IHK/CPI)**.
+    Silakan upload data dalam bentuk file **CSV** atau **Excel**.
+    """
 )
 
-# -----------------------------
-# Lokasi folder data & mapping file
-# -----------------------------
-DATA_DIR = "data"
+# -------------------------------------------------------------------
+# Fungsi bantu untuk membaca file
+# -------------------------------------------------------------------
+def load_file(uploaded_file: st.runtime.uploaded_file_manager.UploadedFile | None):
+    """Membaca file CSV atau Excel menjadi DataFrame pandas."""
+    if uploaded_file is None:
+        return None
 
-FILES = {
-    "Inflation and consumer": "3.1 Inflation, consumer prices (%).csv",
-    "CONSUMER EXPENDITURE": "3.2 CONSUMER EXPENDITURE.csv",
-}
+    filename = uploaded_file.name.lower()
+    if filename.endswith(".csv"):
+        return pd.read_csv(uploaded_file)
+    elif filename.endswith(".xlsx") or filename.endswith(".xls"):
+        return pd.read_excel(uploaded_file)
+    else:
+        st.warning("Format file harus .csv atau .xlsx")
+        return None
 
-# -----------------------------
-# Helper: load CSV
-# -----------------------------
-@st.cache_data
-def load_csv(path: str) -> pd.DataFrame:
-    return pd.read_csv(path)
 
-# cek file mana yang benar-benar ada
-available_indicators = []
-for label, fname in FILES.items():
-    if os.path.exists(os.path.join(DATA_DIR, fname)):
-        available_indicators.append(label)
+# -------------------------------------------------------------------
+# Upload data
+# -------------------------------------------------------------------
+col1, col2 = st.columns(2)
 
-if not available_indicators:
-    st.error(f"Tidak ada file CSV untuk Page 2 yang ditemukan di folder `{DATA_DIR}/`.")
-    st.stop()
+with col1:
+    st.subheader("📂 Upload Data Inflasi")
+    inflasi_file = st.file_uploader(
+        "Pilih file inflasi (CSV/Excel)", type=["csv", "xlsx"], key="inflasi_file"
+    )
 
-# -----------------------------
-# Pilih indikator
-# -----------------------------
-indicator_label = st.selectbox("Pilih indikator tenaga kerja/pengangguran", available_indicators)
-file_path = os.path.join(DATA_DIR, FILES[indicator_label])
+with col2:
+    st.subheader("📂 Upload Data IHK/CPI")
+    cpi_file = st.file_uploader(
+        "Pilih file IHK/CPI (CSV/Excel)", type=["csv", "xlsx"], key="cpi_file"
+    )
 
-# -----------------------------
-# Load data
-# -----------------------------
-try:
-    df = load_csv(file_path)
-except Exception as e:
-    st.error(f"Gagal membaca file `{os.path.basename(file_path)}`: {e}")
-    st.stop()
+df_inflasi = load_file(inflasi_file)
+df_cpi = load_file(cpi_file)
 
-st.subheader("📄 Preview Data Mentah")
-st.dataframe(df.head(15), use_container_width=True)
+# -------------------------------------------------------------------
+# Tabel & grafik inflasi
+# -------------------------------------------------------------------
+if df_inflasi is not None:
+    st.markdown("---")
+    st.subheader("📊 Tabel Data Inflasi")
+    st.dataframe(df_inflasi, use_container_width=True)
 
-# -----------------------------
-# Deteksi kolom tahun & kolom negara
-# -----------------------------
-cols = [str(c) for c in df.columns]
+    # Pilih kolom untuk grafik
+    st.subheader("📉 Grafik Inflasi")
+    cols = df_inflasi.columns.tolist()
+    num_cols = df_inflasi.select_dtypes("number").columns.tolist()
 
-# kolom tahun = nama kolom berupa angka 4 digit
-year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
+    if len(num_cols) >= 1 and len(cols) >= 1:
+        x_col = st.selectbox("Pilih kolom sumbu X (waktu/tahun/bulan)", cols, index=0)
+        y_col = st.selectbox("Pilih kolom nilai inflasi (Y)", num_cols, index=0)
 
-if not year_cols:
-    st.error("Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) di file CSV ini.")
-    st.stop()
+        chart_inflasi = (
+            alt.Chart(df_inflasi)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X(x_col, title=x_col),
+                y=alt.Y(y_col, title=y_col),
+                tooltip=cols,
+            )
+            .properties(height=400)
+        )
+        st.altair_chart(chart_inflasi, use_container_width=True)
+    else:
+        st.info(
+            "Pastikan data inflasi memiliki minimal satu kolom numerik untuk dibuat grafik."
+        )
 
-# deteksi kolom nama negara
-country_col = None
-for cand in ["Country Name", "country", "Country", "Negara"]()
+# -------------------------------------------------------------------
+# Tabel & grafik IHK / CPI
+# -------------------------------------------------------------------
+if df_cpi is not None:
+    st.markdown("---")
+    st.subheader("📊 Tabel Data IHK/CPI")
+    st.dataframe(df_cpi, use_container_width=True)
+
+    st.subheader("📉 Grafik IHK/CPI")
+    cols_cpi = df_cpi.columns.tolist()
+    num_cols_cpi = df_cpi.select_dtypes("number").columns.tolist()
+
+    if len(num_cols_cpi) >= 1 and len(cols_cpi) >= 1:
+        x_col_cpi = st.selectbox(
+            "Pilih kolom sumbu X (waktu/tahun/bulan) - CPI", cols_cpi, index=0
+        )
+        y_col_cpi = st.selectbox(
+            "Pilih kolom nilai IHK/CPI (Y)", num_cols_cpi, index=0
+        )
+
+        chart_cpi = (
+            alt.Chart(df_cpi)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X(x_col_cpi, title=x_col_cpi),
+                y=alt.Y(y_col_cpi, title=y_col_cpi),
+                tooltip=cols_cpi,
+            )
+            .properties(height=400)
+        )
+        st.altair_chart(chart_cpi, use_container_width=True)
+    else:
+        st.info(
+            "Pastikan data IHK/CPI memiliki minimal satu kolom numerik untuk dibuat grafik."
+        )
+
+# -------------------------------------------------------------------
+# Perbandingan Inflasi vs IHK (jika struktur datanya memungkinkan)
+# -------------------------------------------------------------------
+if df_inflasi is not None and df_cpi is not None:
+    st.markdown("---")
+    st.subheader("🔍 Perbandingan Inflasi dan IHK/CPI (opsional)")
+
+    try:
+        # Coba gabung berdasarkan index (misal sama-sama urut per periode)
+        df_compare = pd.DataFrame()
+        df_compare["Inflasi"] = df_inflasi.select_dtypes("number").iloc[:, 0]
+        df_compare["CPI"] = df_cpi.select_dtypes("number").iloc[:, 0]
+
+        df_compare = df_compare.dropna()
+
+        st.dataframe(df_compare, use_container_width=True)
+
+        chart_compare = (
+            alt.Chart(df_compare.reset_index().rename(columns={"index": "Periode"}))
+            .transform_fold(["Inflasi", "CPI"], as_=["Jenis", "Nilai"])
+            .mark_line(point=True)
+            .encode(
+                x="Periode:O",
+                y="Nilai:Q",
+                color="Jenis:N",
+                tooltip=["Periode", "Jenis", "Nilai"],
+            )
+            .properties(height=400)
+        )
+        st.altair_chart(chart_compare, use_container_width=True)
+    except Exception:
+        st.info(
+            "Struktur data inflasi dan IHK/CPI tidak cocok untuk dibuat grafik perbandingan otomatis. "
+            "Pastikan urutan periode dan jumlah barisnya sebanding."
+        )
