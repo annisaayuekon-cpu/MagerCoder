@@ -39,5 +39,10 @@ pg = st.navigation(
     expanded=True
 )
 
+
 # Jalankan navigation (men-load halaman yg dipilih)
 pg.run()
+
+
+
+
