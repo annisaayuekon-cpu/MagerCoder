@@ -182,8 +182,20 @@ df_country = df_long[df_long["country"] == selected_country].sort_values("year")
 if df_country.empty:
     st.write("Tidak ada data time series untuk negara ini.")
 else:
-    ts = df_country.set_index("year")["value"]
-    st.line_chart(ts, height=350)
+    # X = nilai indikator, Y = tahun
+    fig_ts = px.line(
+        df_country,
+        x="value",
+        y="year",
+        markers=True,
+        title=f"{indicator_label} — {selected_country}"
+    )
+    fig_ts.update_layout(
+        xaxis_title=indicator_label,
+        yaxis_title="Tahun",
+        yaxis=dict(autorange="reversed")  # kalau mau tahun terbaru di atas, hapus baris ini jika tidak perlu
+    )
+    st.plotly_chart(fig_ts, use_container_width=True)
     st.dataframe(df_country.reset_index(drop=True))
 
 # -----------------------------
