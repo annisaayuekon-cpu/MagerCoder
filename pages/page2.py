@@ -23,11 +23,36 @@ FILES = {
     "Employment by sector": "2.4 Employment by sector.csv",
 }
 
-
+# -----------------------------
+# Helper baca CSV (lebih toleran)
+# -----------------------------
 @st.cache_data
-def load_csv(path: str) -> pd.DataFrame:
-    """Membaca CSV dan mengembalikan DataFrame."""
-    return pd.read_csv(path)
+def load_csv_tolerant(path: str) -> pd.DataFrame:
+    """
+    Coba baca CSV dengan beberapa delimiter dan lewati baris bermasalah.
+    """
+    # Coba dengan ; , dan tab
+    for sep in [";", ",", "\t"]:
+        try:
+            df = pd.read_csv(
+                path,
+                sep=sep,
+                engine="python",
+                on_bad_lines="skip"  # baris yang sangat kacau akan dilewati
+            )
+            # kalau cuma 1 kolom besar, mungkin delimiter-nya bukan itu
+            if df.shape[1] > 1:
+                return df
+        except Exception:
+            continue
+
+    # Fallback: biarkan pandas tebak sendiri
+    df = pd.read_csv(
+        path,
+        engine="python",
+        on_bad_lines="skip"
+    )
+    return df
 
 
 # -----------------------------
@@ -54,7 +79,7 @@ indicator_label = st.selectbox(
 file_path = os.path.join(DATA_DIR, FILES[indicator_label])
 
 try:
-    df = load_csv(file_path)
+    df = load_csv_tolerant(file_path)
 except Exception as e:
     st.error(f"Gagal membaca file `{os.path.basename(file_path)}`: {e}")
     st.stop()
@@ -71,7 +96,7 @@ year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
 if not year_cols:
     st.error(
         "Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) "
-        "di file CSV ini."
+        "di file CSV ini. Cek kembali header kolom."
     )
     st.stop()
 
@@ -82,6 +107,7 @@ for cand in ["Country Name", "country", "Country", "Negara", "Entity"]:
         break
 
 if country_col is None:
+    # fallback: kolom pertama dianggap nama negara
     country_col = df.columns[0]
 
 # Ubah ke format long: country, year, value
@@ -92,13 +118,16 @@ df_long = df.melt(
     value_name="value",
 )
 
-df_long["year"] = df_long["year"].astype(int)
+df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce").astype("Int64")
 df_long = df_long.rename(columns={country_col: "country"})
-df_long = df_long.dropna(subset=["value"])
+df_long = df_long.dropna(subset=["value", "year"])
 
 if df_long.empty:
     st.error("Setelah transformasi, tidak ada data bernilai (semua NaN).")
     st.stop()
+
+# pastikan year integer biasa untuk slider
+df_long["year"] = df_long["year"].astype(int)
 
 # -----------------------------
 # Slider tahun untuk peta
