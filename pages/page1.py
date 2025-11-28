@@ -5,7 +5,7 @@ import os
 import plotly.express as px
 
 st.set_page_config(layout="wide")
-st.title("📈 Pertumbuhan Ekonomi & GDP — Visualisasi + Peta Dunia")
+st.title("📈 Pertumbuhan Ekonomi & GDP")
 st.write("Pilih indikator dan tahun untuk melihat peta choropleth (nilai per negara).")
 
 # -----------------------------
