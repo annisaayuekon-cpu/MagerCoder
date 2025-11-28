@@ -1,134 +1,75 @@
 import streamlit as st
 import pandas as pd
+import os
 import plotly.express as px
-import wb_helper as wb
 
 st.set_page_config(layout="wide")
 
-st.title("👷 Tenaga Kerja dan Pengangguran")
-st.write("Visualisasi indikator ketenagakerjaan dan pengangguran dari World Bank dalam bentuk peta dunia dan grafik time series.")
+st.title("👷 Tenaga Kerja & Pengangguran — Peta Dunia + Time Series")
+st.write(
+    "Halaman ini menggunakan data referensi lokal (CSV) untuk memvisualisasikan indikator tenaga kerja "
+    "dan pengangguran dalam bentuk peta dunia dan grafik time series."
+)
 
-# ------------------------------------
-# Pilihan indikator tenaga kerja
-# ------------------------------------
-INDICATORS = {
-    "Unemployment rate (% of total labor force)": "SL.UEM.TOTL.ZS",
-    "Youth unemployment (% ages 15–24)": "SL.UEM.1524.ZS",
-    "Labor force participation rate (% of population ages 15+)": "SL.TLF.CACT.ZS",
-    "Employment in agriculture (% of total employment)": "SL.AGR.EMPL.ZS",
-    "Employment in industry (% of total employment)": "SL.IND.EMPL.ZS",
-    "Employment in services (% of total employment)": "SL.SRV.EMPL.ZS",
+# -----------------------------
+# Lokasi folder data & mapping file
+# -----------------------------
+DATA_DIR = "data"
+
+FILES = {
+    "Labor force participation rate": "2.1 Labor force participation rate.csv",
+    "Unemployment rate": "2.2 Unemployment rate.csv",
+    "Youth unemployment": "2.3 Youth unemployment.csv",
+    "Employment by sector": "2.4 Employment by sector.csv",
 }
 
-indicator_label = st.selectbox("Pilih indikator tenaga kerja", list(INDICATORS.keys()))
-indicator_code = INDICATORS[indicator_label]
-
-# ------------------------------------
-# Ambil data dari helper World Bank
-# ------------------------------------
+# -----------------------------
+# Helper: load CSV
+# -----------------------------
 @st.cache_data
-def load_indicator(code: str) -> pd.DataFrame:
-    """
-    Mengambil data indikator dari wb_helper.
-    Diasumsikan wb.fetch_indicator() mengembalikan kolom:
-    country, iso (opsional), year, value
-    """
-    # kalau di helper kamu ada fungsi countries_default(), bisa dipakai seperti ini
-    try:
-        countries = wb.countries_default()
-        df = wb.fetch_indicator(code, countries)
-    except Exception:
-        # fallback kalau helper kamu memakai argumen berbeda
-        df = wb.fetch_indicator(code)
-    return df
+def load_csv(path: str) -> pd.DataFrame:
+    return pd.read_csv(path)
 
-df = load_indicator(indicator_code)
+# cek file mana yang benar-benar ada
+available_indicators = []
+for label, fname in FILES.items():
+    if os.path.exists(os.path.join(DATA_DIR, fname)):
+        available_indicators.append(label)
 
-if df.empty:
-    st.error("Data untuk indikator ini tidak tersedia.")
+if not available_indicators:
+    st.error(f"Tidak ada file CSV untuk Page 2 yang ditemukan di folder `{DATA_DIR}/`.")
     st.stop()
 
-# pastikan tipe tahun integer
-df["year"] = df["year"].astype(int)
+# -----------------------------
+# Pilih indikator
+# -----------------------------
+indicator_label = st.selectbox("Pilih indikator tenaga kerja/pengangguran", available_indicators)
+file_path = os.path.join(DATA_DIR, FILES[indicator_label])
 
-# ------------------------------------
-# Slider tahun untuk peta
-# ------------------------------------
-years = sorted(df["year"].unique())
-year_min, year_max = min(years), max(years)
-selected_year = st.slider("Pilih tahun untuk peta dunia", year_min, year_max, year_max)
+# -----------------------------
+# Load data
+# -----------------------------
+try:
+    df = load_csv(file_path)
+except Exception as e:
+    st.error(f"Gagal membaca file `{os.path.basename(file_path)}`: {e}")
+    st.stop()
 
-# ------------------------------------
-# Peta dunia choropleth
-# ------------------------------------
-st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
+st.subheader("📄 Preview Data Mentah")
+st.dataframe(df.head(15), use_container_width=True)
 
-df_map = df[df["year"] == selected_year].dropna(subset=["value"]).copy()
+# -----------------------------
+# Deteksi kolom tahun & kolom negara
+# -----------------------------
+cols = [str(c) for c in df.columns]
 
-if df_map.empty:
-    st.warning("Tidak ada data untuk tahun yang dipilih.")
-else:
-    # jika wb_helper menyediakan kolom iso3, gunakan itu
-    iso_col = None
-    for cand in ["iso3", "iso", "country_code", "iso_code"]:
-        if cand in df_map.columns:
-            iso_col = cand
-            break
+# kolom tahun = nama kolom berupa angka 4 digit
+year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
 
-    if iso_col is not None:
-        fig = px.choropleth(
-            df_map,
-            locations=iso_col,
-            color="value",
-            hover_name="country",
-            color_continuous_scale="Viridis",
-            title=f"{indicator_label} ({selected_year})",
-            labels={"value": indicator_label},
-        )
-    else:
-        # pakai nama negara sebagai fallback
-        fig = px.choropleth(
-            df_map,
-            locations="country",
-            locationmode="country names",
-            color="value",
-            hover_name="country",
-            color_continuous_scale="Viridis",
-            title=f"{indicator_label} ({selected_year})",
-            labels={"value": indicator_label},
-        )
+if not year_cols:
+    st.error("Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) di file CSV ini.")
+    st.stop()
 
-    fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
-    st.plotly_chart(fig, use_container_width=True)
-
-# ------------------------------------
-# Time series per negara
-# ------------------------------------
-st.subheader("📈 Time Series per Negara")
-
-country_list = sorted(df["country"].dropna().unique().tolist())
-selected_country = st.selectbox("Pilih negara untuk time series", country_list)
-
-df_country = df[df["country"] == selected_country].sort_values("year")
-
-if df_country.empty:
-    st.write("Tidak ada data time series untuk negara ini.")
-else:
-    ts = df_country.set_index("year")["value"]
-    st.line_chart(ts, height=350)
-    st.dataframe(df_country.reset_index(drop=True))
-
-# ------------------------------------
-# Tabel lengkap dan unduh CSV
-# ------------------------------------
-st.subheader("📘 Data Lengkap (long format)")
-
-st.dataframe(df.reset_index(drop=True), use_container_width=True)
-
-csv = df.to_csv(index=False)
-st.download_button(
-    "⬇ Download data sebagai CSV",
-    csv,
-    file_name=f"tenaga_kerja_{indicator_code}.csv",
-    mime="text/csv",
-)
+# deteksi kolom nama negara
+country_col = None
+for cand in ["Country Name", "country", "Country", "Negara"]()
