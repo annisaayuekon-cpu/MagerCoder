@@ -3,82 +3,70 @@ import pandas as pd
 import os
 import plotly.express as px
 
-inflasi = pd.read_csv("3.1 Inflation, consumer prices (%).csv")
-konsumsi = pd.read_csv("3.2. CONSUMER EXPENDITURE.csv")
+st.set_page_config(layout="wide")
 
-# (Wajib jika ingin tampil interaktif di notebook)
-%matplotlib inline
+st.title("🔥 Inflasi dan Harga Konsumen — Peta Dunia + Time Series")
+st.write(
+    "Halaman ini menampilkan data Inflasi dan Harga Konsumen dalam bentuk peta dunia dan grafik time series "
+)
 
+# -----------------------------
+# Lokasi folder data & mapping file
+# -----------------------------
+DATA_DIR = "data"
 
-# ==============================
-# 📌 Step 2 — Load Dataset
-# ==============================
-inflasi = pd.read_excel("/mnt/data/3.1 Inflation, consumer prices (%).xls")
-konsumsi = pd.read_excel("/mnt/data/3.2. CONSUMER EXPENDITURE.xls")
+FILES = {
+    "Inflation and consumer": "3.1 Inflation, consumer prices (%).csv",
+    "CONSUMER EXPENDITURE": "3.2 CONSUMER EXPENDITURE.csv",
+}
 
-print("Preview Inflasi:")
-display(inflasi.head())
+# -----------------------------
+# Helper: load CSV
+# -----------------------------
+@st.cache_data
+def load_csv(path: str) -> pd.DataFrame:
+    return pd.read_csv(path)
 
-print("\nPreview Consumer Expenditure:")
-display(konsumsi.head())
+# cek file mana yang benar-benar ada
+available_indicators = []
+for label, fname in FILES.items():
+    if os.path.exists(os.path.join(DATA_DIR, fname)):
+        available_indicators.append(label)
 
+if not available_indicators:
+    st.error(f"Tidak ada file CSV untuk Page 2 yang ditemukan di folder `{DATA_DIR}/`.")
+    st.stop()
 
-# ==============================
-# 📌 Step 3 — Deteksi Kolom Tahun
-# ==============================
-tahun_inflasi = [c for c in inflasi.columns if str(c).isdigit()]
-tahun_konsumsi = [c for c in konsumsi.columns if str(c).isdigit()]
+# -----------------------------
+# Pilih indikator
+# -----------------------------
+indicator_label = st.selectbox("Pilih indikator tenaga kerja/pengangguran", available_indicators)
+file_path = os.path.join(DATA_DIR, FILES[indicator_label])
 
-print("\nKolom tahun inflasi:", tahun_inflasi[:10])
-print("Kolom tahun konsumsi:", tahun_konsumsi[:10])
+# -----------------------------
+# Load data
+# -----------------------------
+try:
+    df = load_csv(file_path)
+except Exception as e:
+    st.error(f"Gagal membaca file `{os.path.basename(file_path)}`: {e}")
+    st.stop()
 
+st.subheader("📄 Preview Data Mentah")
+st.dataframe(df.head(15), use_container_width=True)
 
-# ==============================
-# 📌 Step 4 — Pilih 1 negara untuk analisis
-# ==============================
-negara = inflasi.iloc[0,0]  # ganti ke negara lain jika ingin manual
-print(f"\nNegara otomatis terbaca: {negara}")
+# -----------------------------
+# Deteksi kolom tahun & kolom negara
+# -----------------------------
+cols = [str(c) for c in df.columns]
 
-df_i = inflasi[inflasi[inflasi.columns[0]] == negara].melt(id_vars=inflasi.columns[0], value_vars=tahun_inflasi,
-                                                           var_name="tahun", value_name="inflasi")
+# kolom tahun = nama kolom berupa angka 4 digit
+year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
 
-df_k = konsumsi[konsumsi[konsumsi.columns[0]] == negara].melt(id_vars=konsumsi.columns[0], value_vars=tahun_konsumsi,
-                                                             var_name="tahun", value_name="belanja_konsumen")
+if not year_cols:
+    st.error("Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) di file CSV ini.")
+    st.stop()
 
-df_i["tahun"] = df_i["tahun"].astype(int)
-df_k["tahun"] = df_k["tahun"].astype(int)
-
-
-# ==============================
-# 📌 Step 5 — Merge dua variabel
-# ==============================
-gabungan = pd.merge(df_i, df_k, on=["tahun"], how="inner")
-display(gabungan.head())
-
-
-# ==============================
-# 📊 VISUALISASI 1:
-#  TIME SERIES INFLASI vs CONSUMER EXPENDITURE
-# ==============================
-plt.figure(figsize=(10,5))
-plt.plot(gabungan["tahun"], gabungan["inflasi"], label="Inflasi (%)")
-plt.plot(gabungan["tahun"], gabungan["belanja_konsumen"], label="Belanja Konsumen")
-plt.title(f"Inflasi vs Belanja Konsumen — {negara}")
-plt.xlabel("Tahun")
-plt.ylabel("Nilai (%) / USD")
-plt.legend()
-plt.grid()
-plt.show()
-
-
-# ==============================
-# 📊 VISUALISASI 2:
-#  SCATTER HUBUNGAN INFLASI x PENGELUARAN KONSUMEN
-# ==============================
-plt.figure(figsize=(6,5))
-plt.scatter(gabungan["inflasi"], gabungan["belanja_konsumen"])
-plt.title(f"Korelasi Inflasi & Pengeluaran Konsumen — {negara}")
-plt.xlabel("Inflasi (%)")
-plt.ylabel("Belanja Konsumen")
-plt.grid()
-plt.show()
+# deteksi kolom nama negara
+country_col = None
+for cand in ["Country Name", "country", "Country", "Negara"]()

@@ -177,13 +177,28 @@ selected_country = st.selectbox(
     "Pilih negara untuk grafik time series", country_list
 )
 
-df_country = df_long[df_long["country"] == selected_country].sort_values("year")
+df_country = (
+    df_long[df_long["country"] == selected_country]
+    .sort_values("year")
+)
 
 if df_country.empty:
     st.write("Tidak ada data time series untuk negara ini.")
 else:
-    ts = df_country.set_index("year")["value"]
-    st.line_chart(ts, height=350)
+    # X = tahun, Y = nilai (seperti grafik World Bank)
+    fig_ts = px.line(
+        df_country,
+        x="year",
+        y="value",
+        markers=True,
+        title=f"{indicator_label} — {selected_country}",
+    )
+    fig_ts.update_layout(
+        xaxis_title="Tahun",
+        yaxis_title=indicator_label,  # misal: Unemployment rate (%)
+    )
+    st.plotly_chart(fig_ts, use_container_width=True)
+
     st.dataframe(df_country.reset_index(drop=True))
 
 # -----------------------------

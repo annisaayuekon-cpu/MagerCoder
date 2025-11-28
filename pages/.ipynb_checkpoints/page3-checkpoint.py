@@ -1,8 +1,10 @@
-# ==============================
-# 📌 Step 1 — Import Library
-# ==============================
+import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import os
+import plotly.express as px
+
+inflasi = pd.read_csv("3.1 Inflation, consumer prices (%).csv")
+konsumsi = pd.read_csv("3.2. CONSUMER EXPENDITURE.csv")
 
 # (Wajib jika ingin tampil interaktif di notebook)
 %matplotlib inline
@@ -80,4 +82,3 @@ plt.xlabel("Inflasi (%)")
 plt.ylabel("Belanja Konsumen")
 plt.grid()
 plt.show()
-
