@@ -1,10 +1,11 @@
 # pages/page1.py
 import streamlit as st
 import pandas as pd
-import os, glob, csv
 import plotly.express as px
+import os, glob, csv
+from pathlib import Path
 
-# optional dependency: pycountry (digunakan hanya untuk fallback ISO, jika tersedia)
+# optional pycountry (tidak wajib)
 try:
     import pycountry
     _HAS_PYCOUNTRY = True
@@ -13,125 +14,89 @@ except Exception:
 
 st.set_page_config(layout="wide", page_title="Pertumbuhan Ekonomi & GDP")
 st.title("📈 Pertumbuhan Ekonomi & GDP")
-st.markdown(
-    "<small>Halaman ini ditujukan untuk menampilkan data indikator ekonomi berupa <b>pertumbuhan ekonomi</b> (GDP dan indikator terkait).</small>",
-    unsafe_allow_html=True,
-)
-st.write("Pilih file indikator dari folder `data/`")
+st.markdown("Halaman ini menampilkan indikator ekonomi terkait **pertumbuhan ekonomi** (GDP dan turunan).")
 
-DATA_DIR = "data"
+DATA_DIR = Path("data")
 
 # -------------------------
-# helper: list csv files
-# -------------------------
-def list_csv_files(folder: str):
-    return sorted(glob.glob(os.path.join(folder, "*.csv")))
-
-csv_files = list_csv_files(DATA_DIR)
-if not csv_files:
-    st.warning(f"Tidak menemukan file CSV di `{DATA_DIR}/`. Silakan upload CSV ke folder tersebut lalu refresh.")
-    st.stop()
-
-def short_label(path):
-    return os.path.splitext(os.path.basename(path))[0]
-
-# build label -> path mapping (hilangkan .csv di label)
-label_to_path = {}
-counts = {}
-for p in csv_files:
-    base = short_label(p)
-    if base in counts:
-        counts[base] += 1
-        label = f"{base} ({counts[base]})"
-    else:
-        counts[base] = 0
-        label = base
-    label_to_path[label] = p
-
-labels = sorted(label_to_path.keys())
-choice_label = st.selectbox("Pilih indikator (tanpa .csv)", labels, index=0)
-selected_path = label_to_path[choice_label]
-st.caption(f"File: `{os.path.basename(selected_path)}`")
-
-# -------------------------
-# robust csv reader
+# Robust CSV loader
 # -------------------------
 @st.cache_data
-def read_csv_robust(path: str) -> pd.DataFrame:
+def load_csv(path: str) -> pd.DataFrame:
     encodings = ["utf-8", "utf-8-sig", "latin1", "cp1252"]
-    separators = [",", ";", "\t", "|"]
     last_err = None
+
+    # read sample for sniff
     for enc in encodings:
         try:
             with open(path, "r", encoding=enc, errors="replace") as f:
                 sample_lines = []
-                for _ in range(120):
+                for _ in range(200):
                     try:
                         sample_lines.append(next(f))
                     except StopIteration:
                         break
-                sample = "".join(sample_lines)
+                sample = "".join(sample_lines) if sample_lines else ""
         except Exception as e:
             last_err = e
             continue
 
-        sniffed = []
+        # sniff delimiter
+        sep_candidates = []
         try:
             if sample:
                 sniffer = csv.Sniffer()
                 dialect = sniffer.sniff(sample)
-                delim = getattr(dialect, "delimiter", None)
-                if delim:
-                    sniffed.append(delim)
+                if getattr(dialect, "delimiter", None):
+                    sep_candidates.append(dialect.delimiter)
         except Exception:
             pass
 
-        tries = sniffed + [s for s in separators if s not in sniffed] + [None]
-        for sep in tries:
+        for s in [",", ";", "\t", "|"]:
+            if s not in sep_candidates:
+                sep_candidates.append(s)
+
+        for sep in sep_candidates + [None]:
             try:
                 if sep is None:
                     df = pd.read_csv(path, sep=None, engine="python", encoding=enc)
                 else:
                     df = pd.read_csv(path, sep=sep, engine="python", encoding=enc)
-                # normalize column names
                 df.columns = [str(c).strip() for c in df.columns]
                 return df
             except Exception as e2:
                 last_err = e2
                 continue
-    raise last_err or Exception("Gagal membaca file CSV (encoding/delimiter).")
+
+    raise last_err or Exception("Gagal membaca CSV.")
 
 # -------------------------
-# country normalization + iso helper
+# Helpers
 # -------------------------
 COMMON_COUNTRY_MAP = {
     "Viet Nam": "Vietnam",
     "United States of America": "United States",
     "Russian Federation": "Russia",
     "Korea, Rep.": "South Korea",
-    "Korea, Dem. People's Rep.": "North Korea",
     "Czech Republic": "Czechia",
     "Lao PDR": "Laos",
-    "Syrian Arab Republic": "Syria",
-    "Iran (Islamic Republic of)": "Iran",
     "Egypt, Arab Rep.": "Egypt",
     "United Kingdom of Great Britain and Northern Ireland": "United Kingdom",
 }
 
-def normalize_country(name):
+def normalize_country_name(name: str):
     if not isinstance(name, str):
         return name
     s = name.strip()
     if s in COMMON_COUNTRY_MAP:
         return COMMON_COUNTRY_MAP[s]
-    # remove parenthetical
     if "(" in s and ")" in s:
         s0 = s.split("(")[0].strip()
         if s0:
             s = s0
     return s
 
-def iso_from_name(name):
+def try_get_iso3(name: str):
     if not _HAS_PYCOUNTRY or not isinstance(name, str):
         return None
     try:
@@ -148,146 +113,177 @@ def iso_from_name(name):
     return None
 
 # -------------------------
-# load csv
+# List CSV files
 # -------------------------
-try:
-    df_raw = read_csv_robust(selected_path)
-except Exception as e:
-    st.error(f"Gagal membaca CSV: {e}")
+csv_files = sorted(DATA_DIR.glob("*.csv"))
+if not csv_files:
+    st.warning(f"Tidak menemukan file CSV di `{DATA_DIR}/`. Masukkan file CSV lalu refresh.")
     st.stop()
 
-st.subheader("Preview data (atas)")
-# show raw preview but hide any iso columns if present in raw
-raw_preview = df_raw.copy()
-iso_like = [c for c in raw_preview.columns if c.lower() in ("iso3","iso_3","iso","country code","alpha3","iso3_auto")]
-raw_preview = raw_preview.drop(columns=[c for c in iso_like if c in raw_preview.columns], errors="ignore")
-st.dataframe(raw_preview.head(8), use_container_width=True)
+# labels tanpa ekstensi
+file_labels = [f.stem for f in csv_files]
+choice_label = st.selectbox("Pilih file (indikator)", file_labels, index=0)
+# dapatkan path file sesuai pilihan (ambil first match)
+selected_file = next((f for f in csv_files if f.stem == choice_label), None)
+if selected_file is None:
+    st.error("File tidak ditemukan (internal).")
+    st.stop()
+
+# load
+try:
+    df_raw = load_csv(str(selected_file))
+except Exception as e:
+    st.error("Gagal membaca CSV: " + str(e))
+    st.stop()
+
+# tampilkan preview (sembunyikan kolom iso jika ada)
+preview = df_raw.copy()
+for c in list(preview.columns):
+    if c.lower() in ("iso3", "iso_3", "iso", "country code", "alpha3"):
+        preview = preview.drop(columns=[c])
+st.subheader("Preview data (sample)")
+st.dataframe(preview.head(8), use_container_width=True)
 
 # -------------------------
-# detect wide / long format
+# Deteksi kolom country & year
 # -------------------------
 cols = [str(c) for c in df_raw.columns]
 year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
 country_candidates = ["Country Name", "country", "Country", "Negara", "Entity", cols[0]]
-country_col = next((c for c in country_candidates if c in df_raw.columns), None)
+country_col = None
+for cand in country_candidates:
+    if cand in df_raw.columns:
+        country_col = cand
+        break
+
 if country_col is None:
-    st.error("Tidak menemukan kolom nama negara. Pastikan CSV memiliki kolom nama negara (contoh: 'Country Name').")
+    st.error("Tidak menemukan kolom nama negara. Pastikan ada kolom nama negara (contoh: 'Country Name').")
     st.stop()
 
+# Jika wide format
 if year_cols:
     df_long = df_raw.melt(id_vars=[country_col], value_vars=year_cols, var_name="year", value_name="value")
 else:
-    lower_cols = {c.lower(): c for c in df_raw.columns}
-    if "year" in lower_cols and "value" in lower_cols:
-        df_long = df_raw.rename(columns={lower_cols["year"]: "year", lower_cols["value"]: "value"})[[country_col, "year", "value"]].copy()
+    # coba long format (country, year, value)
+    lower_cols = [c.lower() for c in df_raw.columns]
+    if set(["year","value"]).issubset(set(lower_cols)):
+        # temukan exact col names
+        col_map = {c.lower(): c for c in df_raw.columns}
+        df_long = df_raw.rename(columns={col_map["year"]:"year", col_map["value"]:"value"})
+        if country_col not in df_long.columns:
+            st.error("Format long terdeteksi tapi kolom negara tidak ada.")
+            st.stop()
+        df_long = df_long[[country_col, "year", "value"]].copy()
     else:
-        st.error("Tidak terdeteksi kolom tahun. Pastikan file wide (kolom tahun) atau long (year & value).")
+        st.error("Tidak terdeteksi kolom tahun. Gunakan wide-format (kolom tahun seperti 1990,1991...) atau long-format (country, year, value).")
         st.stop()
 
-# -------------------------
-# clean values
-# -------------------------
+# bersihkan & konversi
 df_long = df_long.dropna(subset=[country_col, "value"]).copy()
-df_long[country_col] = df_long[country_col].apply(normalize_country)
-
-def to_number(x):
+df_long[country_col] = df_long[country_col].apply(lambda x: normalize_country_name(str(x)))
+def to_num(x):
     try:
-        return float(str(x).replace(",", "").replace(" ", "").strip())
+        return float(str(x).replace(",","").replace(" ", "").strip())
     except:
         return None
-
-df_long["value"] = df_long["value"].apply(to_number)
+df_long["value"] = df_long["value"].apply(to_num)
 df_long = df_long.dropna(subset=["value"]).copy()
+
+# year -> int jika memungkinkan
 try:
     df_long["year"] = df_long["year"].astype(int)
 except Exception:
+    # biarkan string jika memang bukan int
     pass
 
 # -------------------------
-# safe iso mapping (internal only, kept hidden)
+# Usahakan dapatkan ISO3 dari sumber kolom ISO di raw (jika ada)
 # -------------------------
-# remove existing iso3_auto if somehow present (avoid duplicates)
-if "iso3_auto" in df_long.columns:
-    df_long = df_long.drop(columns=["iso3_auto"])
-
-df_long["iso3_auto"] = None
 iso_candidates = [c for c in df_raw.columns if c.lower() in ("iso3","iso_3","iso","country code","alpha3")]
+df_long["iso3_auto"] = None
 if iso_candidates:
     iso_col = iso_candidates[0]
     try:
         if year_cols:
-            iso_long = df_raw[[country_col, iso_col] + year_cols].melt(
-                id_vars=[country_col, iso_col],
-                value_vars=year_cols,
-                var_name="year",
-                value_name="value"
-            )
+            iso_long = df_raw[[country_col, iso_col] + year_cols].melt(id_vars=[country_col, iso_col], value_vars=year_cols, var_name="year", value_name="value")
+            # normalisasi year & names
             try:
                 iso_long["year"] = iso_long["year"].astype(int)
-            except Exception:
+            except:
                 pass
             iso_merge = iso_long[[country_col, iso_col, "year"]].drop_duplicates()
-            df_long = df_long.merge(iso_merge, on=[country_col, "year"], how="left", suffixes=("", "_iso"))
-            # normalize to iso3_auto without leaving duplicate columns
-            if iso_col in df_long.columns and iso_col != "iso3_auto":
-                df_long["iso3_auto"] = df_long[iso_col]
-                df_long = df_long.drop(columns=[iso_col], errors="ignore")
-            if (iso_col + "_iso") in df_long.columns:
-                df_long["iso3_auto"] = df_long["iso3_auto"].fillna(df_long[iso_col + "_iso"])
-                df_long = df_long.drop(columns=[iso_col + "_iso"], errors="ignore")
+            iso_merge = iso_merge.rename(columns={iso_col: "iso3_auto"})
+            # merge dengan df_long (hindari duplikat kolom)
+            df_long = df_long.merge(iso_merge, on=[country_col, "year"], how="left")
         else:
-            if iso_col in df_raw.columns and "year" in df_raw.columns:
-                df_long = df_long.merge(df_raw[[country_col, iso_col, "year"]], on=[country_col, "year"], how="left", suffixes=("", "_iso"))
-                if iso_col in df_long.columns and iso_col != "iso3_auto":
-                    df_long["iso3_auto"] = df_long[iso_col]
-                    df_long = df_long.drop(columns=[iso_col], errors="ignore")
-                if (iso_col + "_iso") in df_long.columns:
-                    df_long["iso3_auto"] = df_long["iso3_auto"].fillna(df_long[iso_col + "_iso"])
-                    df_long = df_long.drop(columns=[iso_col + "_iso"], errors="ignore")
+            # kalau long format, coba merge via country only
+            iso_map = df_raw[[country_col, iso_col]].drop_duplicates().set_index(country_col)[iso_col].to_dict()
+            df_long["iso3_auto"] = df_long[country_col].map(iso_map)
     except Exception:
-        # ignore iso merge errors (we still have iso3_auto=None)
-        pass
+        df_long["iso3_auto"] = df_long.get("iso3_auto")
 
-# pycountry fallback (hidden): isi hanya nilai kosong, tidak membuat kolom baru
+# jika ada beberapa kolom bernama iso3_auto karena merge, hilangkan duplikat (keep first)
+if any([c == "iso3_auto" for c in df_long.columns]):
+    # pastikan hanya satu kolom bernama iso3_auto
+    cols_seen = []
+    new_cols = []
+    for c in df_long.columns:
+        if c not in cols_seen:
+            new_cols.append(c)
+            cols_seen.append(c)
+    df_long = df_long.loc[:, new_cols]
+
+# kalau pycountry terpasang, coba isi iso untuk nama yang belum ada
 if _HAS_PYCOUNTRY:
-    unique_names = pd.Series(df_long[country_col].unique()).dropna().tolist()
+    missing_names = df_long[df_long["iso3_auto"].isna()][country_col].dropna().unique().tolist()
     iso_map = {}
-    for nm in unique_names:
-        code = iso_from_name(nm)
+    for nm in missing_names:
+        code = try_get_iso3(nm)
         if code:
             iso_map[nm] = code
     if iso_map:
         df_long["iso3_auto"] = df_long["iso3_auto"].fillna(df_long[country_col].map(iso_map))
 
 # -------------------------
-# sidebar options
+# Sidebar (opsi peta)
 # -------------------------
-st.sidebar.header("Opsi Peta & Filter")
-color_mode = st.sidebar.radio("Mode warna", ("Continuous (nilai)", "Quantile (buckets)"))
+st.sidebar.header("Opsi Peta")
+color_mode = st.sidebar.radio("Mode warna peta", ("Continuous (nilai)", "Quantile (buckets)"))
 if color_mode == "Quantile (buckets)":
-    n_buckets = st.sidebar.slider("Jumlah bucket (quantile)", 3, 7, 5)
+    n_buckets = st.sidebar.slider("Jumlah bucket (quantile)", 3, 9, 5)
 else:
     n_buckets = None
-
-min_year = int(df_long["year"].min())
-max_year = int(df_long["year"].max())
-sel_year = st.sidebar.slider("Tahun peta", min_year, max_year, max_year)
+color_scale = st.sidebar.selectbox("Color scale (continuous)", px.colors.named_colorscales(), index=0)
 
 # -------------------------
-# CHOROPLETH (nama negara dulu, iso fallback internal)
+# Peta choropleth
 # -------------------------
-st.subheader("🌍 Peta Dunia")
-df_map = df_long[df_long["year"] == sel_year].copy()
-
-if df_map.empty:
-    st.warning("Tidak ada data untuk tahun yang dipilih.")
+st.subheader("🌎 Peta Dunia (Choropleth)")
+years = sorted(pd.unique(df_long["year"]))
+# slider aman: jika year bukan numeric, tunjukkan pilihan selectbox
+if all(isinstance(y, (int, float)) for y in years):
+    sel_year = st.slider("Pilih tahun", int(min(years)), int(max(years)), int(max(years)))
 else:
-    if color_mode.startswith("Quantile"):
+    sel_year = st.selectbox("Pilih tahun (non-numeric)", years, index=len(years)-1)
+
+df_map = df_long[df_long["year"] == sel_year].copy()
+if df_map.empty:
+    st.warning("Tidak ada data untuk tahun ini.")
+else:
+    # drop repeated columns (jaga satu kolom iso3_auto)
+    if df_map.columns.duplicated().any():
+        df_map = df_map.loc[:, ~df_map.columns.duplicated()].copy()
+
+    # buat warna: quantile atau continuous
+    discrete = False
+    if color_mode == "Quantile (buckets)":
         try:
-            df_map["bucket"] = pd.qcut(df_map["value"], q=n_buckets, duplicates="drop")
-            color_col = "bucket"
+            df_map["bucket"] = pd.qcut(df_map["value"].rank(method="first"), q=n_buckets, duplicates="drop")
+            df_map["bucket_str"] = df_map["bucket"].astype(str)
+            color_col = "bucket_str"
             discrete = True
-        except Exception:
+        except Exception as e:
+            st.warning("Gagal buat quantile buckets: " + str(e))
             color_col = "value"
             discrete = False
     else:
@@ -295,7 +291,7 @@ else:
         discrete = False
 
     plotted = False
-    # coba plot berdasarkan nama negara (primary)
+    # Coba plot berdasarkan country names
     try:
         fig = px.choropleth(
             df_map,
@@ -303,66 +299,63 @@ else:
             locationmode="country names",
             color=color_col,
             hover_name=country_col,
-            hover_data={"value": True},
+            color_continuous_scale=color_scale if not discrete else None,
             title=f"{choice_label} — {sel_year}",
+            labels={color_col: choice_label}
         )
         fig.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
         st.plotly_chart(fig, use_container_width=True)
         plotted = True
-    except Exception:
-        plotted = False
+    except Exception as e:
+        st.info("Plot berdasarkan nama negara gagal — akan mencoba fallback (ISO-3) jika tersedia.")
 
-    # fallback: pakai iso3_auto (internal) jika ada nilai
-    if not plotted and df_map.get("iso3_auto", pd.Series()).notna().any():
+    # fallback ISO3
+    if not plotted and "iso3_auto" in df_map.columns and df_map["iso3_auto"].notna().any():
         try:
             fig2 = px.choropleth(
                 df_map,
                 locations="iso3_auto",
                 color=color_col,
                 hover_name=country_col,
-                hover_data={"value": True},
-                title=f"{choice_label} — {sel_year} (ISO fallback)"
+                title=f"{choice_label} — {sel_year} (ISO-3 fallback)",
+                color_continuous_scale=color_scale if not discrete else None
             )
+            # paksa locationmode ISO-3 (Plotly biasanya otomatis mendeteksi kode ISO)
             fig2.update_layout(margin={"r":0,"t":40,"l":0,"b":0})
             st.plotly_chart(fig2, use_container_width=True)
             plotted = True
-        except Exception:
-            plotted = False
+        except Exception as e2:
+            st.warning("Fallback ISO3 gagal: " + str(e2))
 
     if not plotted:
-        st.error("Gagal membuat peta secara otomatis. Periksa ejaan nama negara atau tambahkan kolom ISO3 pada CSV jika diperlukan.")
-        st.write("Contoh nama negara (sample):", df_map[country_col].unique()[:50].tolist())
+        st.error("Gagal membuat peta otomatis. Periksa ejaan nama negara, tambahkan kolom ISO3 pada CSV, atau kirimkan contoh nama negara yang tidak muncul.")
+        st.write("Contoh nama negara (sample):", list(pd.unique(df_map[country_col])[:30]))
 
 # -------------------------
-# Time series per negara (tidak menampilkan iso)
+# Time series & ranking
 # -------------------------
 st.subheader("📈 Time Series per Negara")
 countries = sorted(df_long[country_col].dropna().unique().tolist())
 sel_country = st.selectbox("Pilih negara", countries, index=0)
 df_country = df_long[df_long[country_col] == sel_country].sort_values("year")
 if not df_country.empty:
-    # tampilkan grafik dan tabel tanpa kolom iso3_auto
     st.line_chart(df_country.set_index("year")["value"], height=360)
-    df_country_view = df_country.drop(columns=["iso3_auto"], errors="ignore").reset_index(drop=True)
-    st.dataframe(df_country_view.tail(50), use_container_width=True)
+    hide_cols = ["iso3_auto"] if "iso3_auto" in df_country.columns else []
+    st.dataframe(df_country.drop(columns=hide_cols).reset_index(drop=True).tail(50), use_container_width=True)
 else:
-    st.info("Tidak ada data time-series untuk negara ini.")
+    st.write("Tidak ada data time series untuk negara ini.")
 
-# -------------------------
-# Ranking (hide iso)
-# -------------------------
 st.subheader(f"📋 Ranking negara — {sel_year}")
-df_rank = df_map[[country_col, "value"]].sort_values("value", ascending=False).reset_index(drop=True)
-st.dataframe(df_rank.head(200), use_container_width=True)
+if not df_map.empty:
+    df_rank = df_map[[country_col, "value"]].sort_values("value", ascending=False).reset_index(drop=True)
+    st.dataframe(df_rank.head(200), use_container_width=True)
 
 # -------------------------
-# download long csv (hide iso column from download if you prefer; currently include iso internally)
+# Download long-format CSV
 # -------------------------
 st.subheader("⬇ Unduh data (long-format)")
-# jika ingin mengeluarkan iso dari unduhan, drop kolom iso3_auto di sini:
-csv_for_download = df_long.drop(columns=["iso3_auto"], errors="ignore")
-csv_bytes = csv_for_download.to_csv(index=False).encode("utf-8")
-st.download_button("Download CSV (long-format)", csv_bytes, file_name=f"{short_label(selected_path)}_long.csv", mime="text/csv")
+csv_out = df_long.to_csv(index=False)
+st.download_button("Download CSV (long-format)", csv_out, file_name=f"{choice_label}_long.csv")
 
 st.markdown("---")
-st.info("Tip: Jika beberapa negara tidak muncul di peta, periksa ejaan atau tambahkan kolom ISO3 pada CSV. Jika ingin, kirim 10 contoh nama negara yang tidak terpetakan agar saya bantu mapping.")
+st.info("Tip: Jika beberapa negara tidak muncul di peta, periksa ejaan atau tambahkan kolom ISO3. Kalau mau, kirim 10 contoh nama negara yang tidak terpetakan agar saya bantu mapping.")
