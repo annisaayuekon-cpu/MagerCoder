@@ -5,7 +5,7 @@ import plotly.express as px
 
 st.set_page_config(layout="wide")
 
-st.title("📉 Inflasi & Indeks Harga Konsumen (IHK/CPI) — Peta Dunia + Time Series")
+st.title("📉 Inflasi & Indeks Harga Konsumen — Peta Dunia + Time Series")
 st.write(
     "Halaman ini menampilkan indikator **Inflasi** dan **Indeks Harga Konsumen (IHK/CPI)** "
     "berdasarkan file CSV yang berada pada folder `data/`. Format file mengikuti nama seperti di bawah."
@@ -17,10 +17,8 @@ st.write(
 DATA_DIR = "data"
 
 FILES = {
-    "Inflation annual (%)": "3.1 Inflation annual percent.csv",
-    "Consumer Price Index (CPI)": "3.2 CPI index.csv",
-    "Inflation food prices (%)": "3.3 Inflation food.csv",
-    "Inflation core rate (%)": "3.4 Core inflation.csv",
+    "Inflation and consumer prices": "3.1 Inflation, consumer prices (%).csv",
+    "Consumer Expenditur": "3.2. CONSUMER EXPENDITURE.csv",
 }
 
 # -----------------------------
@@ -120,18 +118,36 @@ else:
 # -----------------------------
 # Grafik Time Series
 # -----------------------------
-st.subheader("📈 Tren Time Series per Negara")
+st.subheader("📈 Time Series per Negara")
 
-country_list = sorted(df_long["country"].unique().tolist())
-selected_country = st.selectbox("Pilih negara grafik :", country_list)
+country_list = sorted(df_long["country"].dropna().unique().tolist())
+selected_country = st.selectbox(
+    "Pilih negara untuk grafik time series", country_list
+)
 
-df_country = df_long[df_long["country"] == selected_country]
+df_country = (
+    df_long[df_long["country"] == selected_country]
+    .sort_values("year")
+)
 
 if df_country.empty:
-    st.info("Tidak ada time series untuk negara ini.")
+    st.write("Tidak ada data time series untuk negara ini.")
 else:
-    st.line_chart(df_country.set_index("year")["value"], height=350)
-    st.dataframe(df_country.reset_index(drop=True), use_container_width=True)
+    # X = tahun, Y = nilai (seperti grafik World Bank)
+    fig_ts = px.line(
+        df_country,
+        x="year",
+        y="value",
+        markers=True,
+        title=f"{indicator_label} — {selected_country}",
+    )
+    fig_ts.update_layout(
+        xaxis_title="Tahun",
+        yaxis_title=indicator_label,  # misal: Unemployment rate (%)
+    )
+    st.plotly_chart(fig_ts, use_container_width=True)
+
+    st.dataframe(df_country.reset_index(drop=True))
 
 # -----------------------------
 # Download Full Data
