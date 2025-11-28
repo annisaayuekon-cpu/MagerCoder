@@ -12,7 +12,7 @@ except Exception:
     _HAS_PYCOUNTRY = False
 
 st.set_page_config(layout="wide", page_title="Pertumbuhan Ekonomi & GDP")
-st.title("📈 Pertumbuhan Ekonomi & GDP — Visualisasi & Peta Dunia")
+st.title("📈 Pertumbuhan Ekonomi & GDP")
 st.write("Baca file CSV di folder `data/`. Loader sudah dibuat robust: mencoba beberapa encoding & delimiter.")
 
 DATA_DIR = "data"
@@ -146,7 +146,7 @@ except Exception as e:
     st.error("Gagal membaca CSV: " + str(e))
     st.stop()
 
-st.subheader("Preview data (baris atas)")
+st.subheader("Preview data")
 st.dataframe(df_raw.head(8), use_container_width=True)
 
 # -------------------------
