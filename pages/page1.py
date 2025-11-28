@@ -358,4 +358,3 @@ csv_out = df_long.to_csv(index=False)
 st.download_button("Download CSV (long-format)", csv_out, file_name=f"{choice_label}_long.csv")
 
 st.markdown("---")
-st.info("Tip: Jika beberapa negara tidak muncul di peta, periksa ejaan atau tambahkan kolom ISO3. Kalau mau, kirim 10 contoh nama negara yang tidak terpetakan agar saya bantu mapping.")
