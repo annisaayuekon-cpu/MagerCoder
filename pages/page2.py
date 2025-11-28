@@ -7,8 +7,8 @@ st.set_page_config(layout="wide")
 
 st.title("👷 Tenaga Kerja & Pengangguran — Peta Dunia + Time Series")
 st.write(
-    "Halaman ini menggunakan data referensi lokal (CSV) untuk memvisualisasikan indikator tenaga kerja "
-    "dan pengangguran dalam bentuk peta dunia dan grafik time series."
+    "Halaman ini menampilkan indikator tenaga kerja dan pengangguran "
+    "berdasarkan data referensi lokal (file CSV) yang ada di folder `data/`."
 )
 
 # -----------------------------
@@ -23,32 +23,36 @@ FILES = {
     "Employment by sector": "2.4 Employment by sector.csv",
 }
 
-# -----------------------------
-# Helper: load CSV
-# -----------------------------
+
 @st.cache_data
 def load_csv(path: str) -> pd.DataFrame:
+    """Membaca CSV dan mengembalikan DataFrame."""
     return pd.read_csv(path)
 
-# cek file mana yang benar-benar ada
+
+# -----------------------------
+# Cek file yang tersedia
+# -----------------------------
 available_indicators = []
 for label, fname in FILES.items():
     if os.path.exists(os.path.join(DATA_DIR, fname)):
         available_indicators.append(label)
 
 if not available_indicators:
-    st.error(f"Tidak ada file CSV untuk Page 2 yang ditemukan di folder `{DATA_DIR}/`.")
+    st.error(
+        f"Tidak ada file CSV Page 2 yang ditemukan di folder `{DATA_DIR}/`. "
+        "Pastikan file 2.1–2.4 sudah diletakkan di sana."
+    )
     st.stop()
 
 # -----------------------------
-# Pilih indikator
+# Pilih indikator & load data
 # -----------------------------
-indicator_label = st.selectbox("Pilih indikator tenaga kerja/pengangguran", available_indicators)
+indicator_label = st.selectbox(
+    "Pilih indikator tenaga kerja/pengangguran", available_indicators
+)
 file_path = os.path.join(DATA_DIR, FILES[indicator_label])
 
-# -----------------------------
-# Load data
-# -----------------------------
 try:
     df = load_csv(file_path)
 except Exception as e:
@@ -59,17 +63,110 @@ st.subheader("📄 Preview Data Mentah")
 st.dataframe(df.head(15), use_container_width=True)
 
 # -----------------------------
-# Deteksi kolom tahun & kolom negara
+# Deteksi kolom tahun & negara
 # -----------------------------
 cols = [str(c) for c in df.columns]
-
-# kolom tahun = nama kolom berupa angka 4 digit
 year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
 
 if not year_cols:
-    st.error("Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) di file CSV ini.")
+    st.error(
+        "Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) "
+        "di file CSV ini."
+    )
     st.stop()
 
-# deteksi kolom nama negara
 country_col = None
-for cand in ["Country Name", "country", "Country", "Negara"]()
+for cand in ["Country Name", "country", "Country", "Negara", "Entity"]:
+    if cand in df.columns:
+        country_col = cand
+        break
+
+if country_col is None:
+    country_col = df.columns[0]
+
+# Ubah ke format long: country, year, value
+df_long = df.melt(
+    id_vars=[country_col],
+    value_vars=year_cols,
+    var_name="year",
+    value_name="value",
+)
+
+df_long["year"] = df_long["year"].astype(int)
+df_long = df_long.rename(columns={country_col: "country"})
+df_long = df_long.dropna(subset=["value"])
+
+if df_long.empty:
+    st.error("Setelah transformasi, tidak ada data bernilai (semua NaN).")
+    st.stop()
+
+# -----------------------------
+# Slider tahun untuk peta
+# -----------------------------
+years = sorted(df_long["year"].unique())
+year_min = int(min(years))
+year_max = int(max(years))
+
+selected_year = st.slider(
+    "Pilih tahun untuk peta dunia", year_min, year_max, year_max
+)
+
+df_map = df_long[df_long["year"] == selected_year]
+
+st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
+
+if df_map.empty:
+    st.warning("Tidak ada data untuk tahun yang dipilih.")
+else:
+    try:
+        fig = px.choropleth(
+            df_map,
+            locations="country",
+            locationmode="country names",
+            color="value",
+            hover_name="country",
+            color_continuous_scale="Viridis",
+            title=f"{indicator_label} — {selected_year}",
+            labels={"value": indicator_label},
+        )
+        fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(
+            "Gagal membuat peta dunia. "
+            "Cek apakah nama negara di CSV sesuai standar country names Plotly.\n\n"
+            f"Detail error: {e}"
+        )
+
+# -----------------------------
+# Time series per negara
+# -----------------------------
+st.subheader("📈 Time Series per Negara")
+
+country_list = sorted(df_long["country"].dropna().unique().tolist())
+selected_country = st.selectbox(
+    "Pilih negara untuk grafik time series", country_list
+)
+
+df_country = df_long[df_long["country"] == selected_country].sort_values("year")
+
+if df_country.empty:
+    st.write("Tidak ada data time series untuk negara ini.")
+else:
+    ts = df_country.set_index("year")["value"]
+    st.line_chart(ts, height=350)
+    st.dataframe(df_country.reset_index(drop=True))
+
+# -----------------------------
+# Tabel lengkap & download
+# -----------------------------
+st.subheader("📘 Data Lengkap (long format)")
+st.dataframe(df_long.reset_index(drop=True), use_container_width=True)
+
+csv_download = df_long.to_csv(index=False)
+st.download_button(
+    "⬇ Download data (CSV)",
+    csv_download,
+    file_name=f"page2_tenaga_kerja_{indicator_label.replace(' ', '_')}.csv",
+    mime="text/csv",
+)
