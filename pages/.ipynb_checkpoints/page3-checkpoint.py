@@ -5,7 +5,7 @@ import plotly.express as px
 
 st.set_page_config(layout="wide")
 
-st.title("📉 Inflasi & Indeks Harga Konsumen (IHK/CPI) — Peta Dunia + Time Series")
+st.title("📉 Inflasi & Indeks Harga Konsumen — Peta Dunia + Time Series")
 st.write(
     "Halaman ini menampilkan indikator **Inflasi** dan **Indeks Harga Konsumen (IHK/CPI)** "
     "berdasarkan file CSV yang berada pada folder `data/`. Format file mengikuti nama seperti di bawah."
@@ -17,10 +17,8 @@ st.write(
 DATA_DIR = "data"
 
 FILES = {
-    "Inflation annual (%)": "3.1 Inflation annual percent.csv",
-    "Consumer Price Index (CPI)": "3.2 CPI index.csv",
-    "Inflation food prices (%)": "3.3 Inflation food.csv",
-    "Inflation core rate (%)": "3.4 Core inflation.csv",
+    "Inflation and consumer prices": "3.1 Inflation, consumer prices (%).csv",
+    "Consumer Expenditur": "3.2. CONSUMER EXPENDITURE.csv",
 }
 
 # -----------------------------
