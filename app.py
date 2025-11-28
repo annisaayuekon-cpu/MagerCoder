@@ -9,65 +9,19 @@
 import streamlit as st
 
 # ========== DEFINISI HALAMAN ==========
+
 pages = [
-    st.Page(
-        page="pages/1_PertumbuhanEkonomi.py",
-        title="Pertumbuhan Ekonomi & GDP",
-        icon="📈"   # ikon pertumbuhan ekonomi
-    ),
-    st.Page(
-        page="pages/2_PDBPerKapita.py",
-        title="GDP Per Kapita & Struktur Ekonomi",
-        icon="💰"   # ikon PDB per kapita
-    ),
-    st.Page(
-        page="pages/3_Inflasi.py",
-        title="Inflasi & Harga Konsumen",
-        icon="🔥"   # ikon inflasi
-    ),
-    st.Page(
-        page="pages/4_Pengangguran.py",
-        title="Pengangguran",
-        icon="👷"   # ikon tenaga kerja
-    ),
-    st.Page(
-        page="pages/5_Perdagangan.py",
-        title="Perdagangan Internasional",
-        icon="🌐"   # ikon perdagangan
-    ),
-    st.Page(
-        page="pages/6_Investasi.py",
-        title="Investasi (FDI & Kapital)",
-        icon="💼"   # ikon investasi
-    ),
-    st.Page(
-        page="pages/7_KemiskinanGINI.py",
-        title="Kemiskinan & GINI",
-        icon="📉"   # ikon kemiskinan
-    ),
-    st.Page(
-        page="pages/8_Populasi.py",
-        title="Populasi & Demografi",
-        icon="👥"   # ikon populasi
-    ),
-    st.Page(
-        page="pages/9_KesehatanPendidikan.py",
-        title="Kesehatan & Pendidikan",
-        icon="🏥"   # ikon kesehatan
-    ),
-    st.Page(
-        page="pages/10_EnergiLingkungan.py",
-        title="Energi & Lingkungan",
-        icon="🌱"   # ikon energi
-    )
+    st.Page(page="pages/page1.py",  title="📈 Pertumbuhan Ekonomi & GDP",          icon="📈"),
+    st.Page(page="pages/page2.py",  title="💰 PDB Per Kapita & Struktur Ekonomi",  icon="💰"),
+    st.Page(page="pages/page3.py",  title="🔥 Inflasi & Harga Konsumen",          icon="🔥"),
+    st.Page(page="pages/page4.py",  title="👷 Pengangguran & Tenaga Kerja",        icon="👷"),
+    st.Page(page="pages/page5.py",  title="🌐 Perdagangan Internasional",         icon="🌐"),
+    st.Page(page="pages/page6.py",  title="💼 Investasi (FDI & Kapital)",         icon="💼"),
+    st.Page(page="pages/page7.py",  title="📉 Kemiskinan & Ketimpangan (GINI)",   icon="📉"),
+    st.Page(page="pages/page8.py",  title="👥 Populasi & Demografi",              icon="👥"),
+    st.Page(page="pages/page9.py",  title="🏥 Kesehatan & Pendidikan",            icon="🏥"),
+    st.Page(page="pages/page10.py", title="🌱 Energi & Lingkungan",               icon="🌱"),
 ]
 
-# ========== NAVIGASI (SIDEBAR) ==========
-pg = st.navigation(
-    pages,
-    position="sidebar",
-    expanded=True
-)
-
-# ========== JALANKAN HALAMAN ==========
+pg = st.navigation(pages, position="sidebar", expanded=True)
 pg.run()
