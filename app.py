@@ -8,39 +8,66 @@
 # app.py
 import streamlit as st
 
-st.set_page_config(
-    page_title="Dashboard Ekonomi Dunia – Kelompok",
-    page_icon="🌍",
-    layout="wide"
+# ========== DEFINISI HALAMAN ==========
+pages = [
+    st.Page(
+        page="pages/1_PertumbuhanEkonomi.py",
+        title="Pertumbuhan Ekonomi & GDP",
+        icon="📈"   # ikon pertumbuhan ekonomi
+    ),
+    st.Page(
+        page="pages/2_PDBPerKapita.py",
+        title="GDP Per Kapita & Struktur Ekonomi",
+        icon="💰"   # ikon PDB per kapita
+    ),
+    st.Page(
+        page="pages/3_Inflasi.py",
+        title="Inflasi & Harga Konsumen",
+        icon="🔥"   # ikon inflasi
+    ),
+    st.Page(
+        page="pages/4_Pengangguran.py",
+        title="Pengangguran",
+        icon="👷"   # ikon tenaga kerja
+    ),
+    st.Page(
+        page="pages/5_Perdagangan.py",
+        title="Perdagangan Internasional",
+        icon="🌐"   # ikon perdagangan
+    ),
+    st.Page(
+        page="pages/6_Investasi.py",
+        title="Investasi (FDI & Kapital)",
+        icon="💼"   # ikon investasi
+    ),
+    st.Page(
+        page="pages/7_KemiskinanGINI.py",
+        title="Kemiskinan & GINI",
+        icon="📉"   # ikon kemiskinan
+    ),
+    st.Page(
+        page="pages/8_Populasi.py",
+        title="Populasi & Demografi",
+        icon="👥"   # ikon populasi
+    ),
+    st.Page(
+        page="pages/9_KesehatanPendidikan.py",
+        title="Kesehatan & Pendidikan",
+        icon="🏥"   # ikon kesehatan
+    ),
+    st.Page(
+        page="pages/10_EnergiLingkungan.py",
+        title="Energi & Lingkungan",
+        icon="🌱"   # ikon energi
+    )
+]
+
+# ========== NAVIGASI (SIDEBAR) ==========
+pg = st.navigation(
+    pages,
+    position="sidebar",
+    expanded=True
 )
 
-st.title("🌍 Dashboard Ekonomi Dunia – Kelompok")
-
-st.markdown("""
-Selamat datang di aplikasi **Dashboard Ekonomi** berbasis data **World Bank**.  
-Gunakan menu **Pages** di sidebar untuk melihat data ekonomi per kategori.
-""")
-
-st.header("📌 Daftar Halaman (Page 1–10)")
-st.markdown("""
-### 1️⃣ 📈 Pertumbuhan Ekonomi & GDP  
-### 2️⃣ 💰 GDP Per Kapita & Struktur Ekonomi  
-### 3️⃣ 🔥 Inflasi & Harga Konsumen  
-### 4️⃣ 👷 Pengangguran  
-### 5️⃣ 🌐 Perdagangan Internasional  
-### 6️⃣ 💼 Investasi (FDI & Kapital)  
-### 7️⃣ 📉 Kemiskinan & Ketimpangan (GINI)  
-### 8️⃣ 👥 Populasi & Demografi  
-### 9️⃣ 🏥 Kesehatan & Pendidikan  
-### 🔟 🌱 Energi & Lingkungan  
-""")
-
-st.header("👥 Anggota Kelompok")
-st.markdown("""
-- Annisa Ayu   
-- Nama Anggota 2  
-- Nama Anggota 3  
-- Nama Anggota 4  
-""")
-
-st.info("Pilih halaman di sidebar untuk melihat data World Bank.")
+# ========== JALANKAN HALAMAN ==========
+pg.run()
