@@ -118,36 +118,58 @@ else:
 # -----------------------------
 # Grafik Time Series
 # -----------------------------
-st.subheader("📈 Time Series per Negara")
+st.subheader("📈 Grafik Time Series Inflasi / CPI")
 
+# daftar negara
 country_list = sorted(df_long["country"].dropna().unique().tolist())
-selected_country = st.selectbox(
-    "Pilih negara untuk grafik time series", country_list
+
+# default: kalau ada Indonesia, pilih itu; kalau tidak, pilih negara pertama
+default_country = "Indonesia" if "Indonesia" in country_list else country_list[0]
+
+# boleh pilih satu atau beberapa negara (seperti tombol Also Show di World Bank)
+selected_countries = st.multiselect(
+    "Pilih negara (bisa lebih dari satu):",
+    country_list,
+    default=[default_country],
 )
 
-df_country = (
-    df_long[df_long["country"] == selected_country]
-    .sort_values("year")
+# filter data
+df_ts = (
+    df_long[df_long["country"].isin(selected_countries)]
+    .sort_values(["country", "year"])
 )
 
-if df_country.empty:
-    st.write("Tidak ada data time series untuk negara ini.")
+if df_ts.empty:
+    st.info("Tidak ada data time series untuk negara yang dipilih.")
 else:
-    # X = tahun, Y = nilai (seperti grafik World Bank)
+    # line chart + titik (markers) seperti di situs World Bank
     fig_ts = px.line(
-        df_country,
+        df_ts,
         x="year",
         y="value",
-        markers=True,
-        title=f"{indicator_label} — {selected_country}",
+        color="country",
+        markers=True,  # muncul titik-titik di setiap tahun
+        labels={
+            "year": "Tahun",
+            "value": indicator,
+            "country": "Negara",
+        },
     )
+    # supaya sumbu X rapi (misal loncat 5 tahun)
     fig_ts.update_layout(
         xaxis_title="Tahun",
-        yaxis_title=indicator_label,  # misal: Unemployment rate (%)
+        yaxis_title=indicator,
+        xaxis=dict(dtick=5),
+        legend_title="Negara",
+        margin={"l": 0, "r": 0, "t": 30, "b": 0},
     )
+
     st.plotly_chart(fig_ts, use_container_width=True)
 
-    st.dataframe(df_country.reset_index(drop=True))
+    # tabel data yang dipakai grafik
+    st.dataframe(
+        df_ts.sort_values(["country", "year"]).reset_index(drop=True),
+        use_container_width=True,
 
 # -----------------------------
 # Download Full Data
