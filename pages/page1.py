@@ -13,6 +13,15 @@ except Exception:
     _HAS_PYCOUNTRY = False
 
 st.set_page_config(layout="wide", page_title="Pertumbuhan Ekonomi & GDP")
+st.markdown("""
+    <style>
+        .stApp {
+            background: linear-gradient(120deg, #f6d365, #fda085);
+            background-attachment: fixed;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 st.title("📈 Pertumbuhan Ekonomi & GDP")
 st.markdown("Halaman ini menampilkan indikator ekonomi terkait **pertumbuhan ekonomi** (GDP dan turunan).")
 
