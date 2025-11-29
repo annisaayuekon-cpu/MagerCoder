@@ -16,58 +16,6 @@ except Exception:
 
 st.set_page_config(layout="wide", page_title="Pertumbuhan Ekonomi & GDP")
 
-st.markdown("""
-<style>
-
-/* ====== BACKGROUND GRADIENT (PAGE) ====== */
-
-/* Kontainer utama aplikasi */
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, #ffd98a 0%, #ffb07a 50%, #ff7e7e 100%) !important;
-    background-attachment: fixed;
-}
-
-/* Hilangkan background putih default */
-[data-testid="stAppViewContainer"] .main {
-    background-color: transparent !important;
-}
-
-/* Sidebar juga gradient (opsional, bisa kamu hapus) */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #ffe1a8, #ffb07a);
-}
-
-/* ====== TABLE STYLING ====== */
-
-/* wrapper DataFrame */
-[data-testid="stDataFrame"] > div[role="region"] {
-  background: rgba(255,255,255,0.75) !important;
-  border-radius: 12px;
-  padding: 6px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-}
-
-/* header tabel */
-[data-testid="stDataFrame"] th {
-  background: rgba(250,250,250,0.9) !important;
-  color: #222 !important;
-}
-
-/* baris tabel */
-[data-testid="stDataFrame"] td {
-  background: rgba(255,255,255,0.85) !important;
-}
-
-/* Judul */
-h1, h2, h3 {
-  color: #1b2733 !important;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# ---- akhir CSS ----
-
 st.title("📈 Pertumbuhan Ekonomi & GDP")
 st.markdown("Halaman ini menampilkan indikator ekonomi terkait **pertumbuhan ekonomi** (GDP dan turunan).")
 
