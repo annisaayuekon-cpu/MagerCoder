@@ -5,6 +5,7 @@ import plotly.express as px
 
 st.set_page_config(layout="wide")
 
+
 st.title("📉 Inflasi & Indeks Harga Konsumen — Peta Dunia + Time Series")
 st.write(
     "Halaman ini menampilkan indikator **Inflasi** dan **Indeks Harga Konsumen (IHK/CPI)** "
@@ -170,6 +171,7 @@ else:
     st.dataframe(
         df_ts.sort_values(["country", "year"]).reset_index(drop=True),
         use_container_width=True,
+    )
 
 # -----------------------------
 # Download Full Data

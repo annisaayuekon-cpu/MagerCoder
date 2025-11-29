@@ -15,7 +15,7 @@ st.set_page_config(page_title="Dashboard Ekonomi Dunia - Kelompok", page_icon="�
 # -----------------------------
 pages = [
     # Home (harus ada file pages/home.py)
-    st.Page(page="pages/home.py", title="Home", icon="🏠"),
+    st.Page(page="pages/home.py", title="Dashboard Ekonomi", icon="🌍"),
 
     # Page 1 - 10 (pastikan file pages/page1.py ... pages/page10.py ada)
     st.Page(page="pages/page1.py",  title="Pertumbuhan Ekonomi & GDP",         icon="📈"),
