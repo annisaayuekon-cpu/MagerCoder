@@ -16,26 +16,61 @@ except Exception:
 
 st.set_page_config(layout="wide", page_title="Pertumbuhan Ekonomi & GDP")
 
-# 2️⃣ CSS styling untuk DataFrame
-st.markdown("""
+# ---- CSS: gradient background + DataFrame styling ----
+st.markdown(
+"""
 <style>
-/* Ubah background container DataFrame */
-[data-testid="stDataFrame"] div {
-    background-color: rgba(255, 255, 255, 0.4) !important;
-    border-radius: 10px;
+/* gradient untuk seluruh halaman (block container) */
+[data-testid="stAppViewContainer"] .main {
+  background: linear-gradient(135deg, #ffd98a 0%, #ffb07a 50%, #ff7e7e 100%);
+  background-attachment: fixed;
 }
 
-/* Ubah header tabel */
+/* buat container utama sedikit transparan supaya teks tetap terbaca */
+.block-container{
+  background-color: rgba(255,255,255,0.0);
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+/* styling card area supaya terbaca di atas gradient */
+.reportview-container .main .block-container {
+  background: transparent;
+}
+
+/* DataFrame wrapper — tingkat specific dan !important agar override */
+[data-testid="stDataFrame"] > div[role="region"] {
+  background: rgba(255,255,255,0.75) !important;
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* header tabel sedikit lebih tegas */
 [data-testid="stDataFrame"] th {
-    background-color: rgba(255, 255, 255, 0.7) !important;
+  background: rgba(250,250,250,0.9) !important;
+  color: #222;
 }
 
-/* Ubah baris tabel */
+/* baris tabel lebih transparan */
 [data-testid="stDataFrame"] td {
-    background-color: rgba(255, 255, 255, 0.55) !important;
+  background: rgba(255,255,255,0.85) !important;
+}
+
+/* buat judul section lebih kontras */
+h1, h2, h3 {
+  color: #1b2733;
+}
+
+/* kecilkan padding sidebar supaya lebih rapi */
+.cliSidebarNav {
+  padding-top: 1rem;
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+unsafe_allow_html=True,
+)
+# ---- akhir CSS ----
 
 st.title("📈 Pertumbuhan Ekonomi & GDP")
 st.markdown("Halaman ini menampilkan indikator ekonomi terkait **pertumbuhan ekonomi** (GDP dan turunan).")
