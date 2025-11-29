@@ -1,3 +1,5 @@
+
+
 # pages/page1.py
 import streamlit as st
 import pandas as pd
@@ -13,13 +15,26 @@ except Exception:
     _HAS_PYCOUNTRY = False
 
 st.set_page_config(layout="wide", page_title="Pertumbuhan Ekonomi & GDP")
+
+# 2️⃣ CSS styling untuk DataFrame
 st.markdown("""
-    <style>
-        .stApp {
-            background: linear-gradient(120deg, #f6d365, #fda085);
-            background-attachment: fixed;
-        }
-    </style>
+<style>
+/* Ubah background container DataFrame */
+[data-testid="stDataFrame"] div {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+    border-radius: 10px;
+}
+
+/* Ubah header tabel */
+[data-testid="stDataFrame"] th {
+    background-color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Ubah baris tabel */
+[data-testid="stDataFrame"] td {
+    background-color: rgba(255, 255, 255, 0.55) !important;
+}
+</style>
 """, unsafe_allow_html=True)
 
 st.title("📈 Pertumbuhan Ekonomi & GDP")
