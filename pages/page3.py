@@ -170,6 +170,7 @@ else:
     st.dataframe(
         df_ts.sort_values(["country", "year"]).reset_index(drop=True),
         use_container_width=True,
+    )
 
 # -----------------------------
 # Download Full Data
