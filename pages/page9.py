@@ -6,7 +6,7 @@ import plotly.express as px
 
 st.set_page_config(layout="wide", page_title="Kesehatan", page_icon="🏥")
 
-st.title("🏥 Kesehatan — Peta Dunia + Time Series")
+st.title("🏥 Kesehatan")
 st.write(
     "Halaman ini menampilkan indikator Kesehatan berdasarkan file CSV pada folder `data/`.\n"
     "Script otomatis mendeteksi apakah file berformat *wide* (kolom tahun) atau *long* (country-year-value)."
