@@ -57,27 +57,22 @@ def load_csv_tolerant(path: str) -> pd.DataFrame:
 
 
 # -----------------------------
-# Cek file yang tersedia
-# -----------------------------
-available_indicators = []
-for label, fname in FILES.items():
-    if os.path.exists(os.path.join(DATA_DIR, fname)):
-        available_indicators.append(label)
-
-if not available_indicators:
-    st.error(
-        f"Tidak ada file CSV Page 6 yang ditemukan di folder `{DATA_DIR}/`. "
-        "Pastikan file 6.1, 6.2, dan 6.3 sudah diletakkan di sana."
-    )
-    st.stop()
-
-# -----------------------------
 # Pilih indikator & load data
 # -----------------------------
 indicator_label = st.selectbox(
-    "Pilih indikator kemiskinan/ketimpangan", available_indicators
+    "Pilih indikator kemiskinan/ketimpangan",
+    list(FILES.keys()),
 )
+
 file_path = os.path.join(DATA_DIR, FILES[indicator_label])
+
+if not os.path.exists(file_path):
+    st.error(
+        f"File untuk indikator **{indicator_label}** tidak ditemukan.\n\n"
+        f"Cari di folder `{DATA_DIR}/` nama: `{FILES[indicator_label]}` "
+        "(cek lagi ejaan, spasi, huruf besar-kecil)."
+    )
+    st.stop()
 
 try:
     df = load_csv_tolerant(file_path)
