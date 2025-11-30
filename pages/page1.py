@@ -144,7 +144,7 @@ preview = df_raw.copy()
 for c in list(preview.columns):
     if c.lower() in ("iso3", "iso_3", "iso", "country code", "alpha3"):
         preview = preview.drop(columns=[c])
-st.subheader("Preview data (sample)")
+st.subheader("Preview data mentah")
 st.dataframe(preview.head(8), use_container_width=True)
 
 # -------------------------
@@ -261,7 +261,7 @@ color_scale = st.sidebar.selectbox("Color scale (continuous)", px.colors.named_c
 # -------------------------
 # Peta choropleth
 # -------------------------
-st.subheader("🌎 Peta Dunia (Choropleth)")
+st.subheader("🌎 Peta Dunia")
 years = sorted(pd.unique(df_long["year"]))
 # slider aman: jika year bukan numeric, tunjukkan pilihan selectbox
 if all(isinstance(y, (int, float)) for y in years):
