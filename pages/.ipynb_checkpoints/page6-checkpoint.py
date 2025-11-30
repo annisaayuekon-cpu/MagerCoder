@@ -133,16 +133,30 @@ year_min = int(min(years))
 year_max = int(max(years))
 
 selected_year = st.slider(
-    "Pilih tahun untuk peta dunia", year_min, year_max, year_max
+    "Pilih tahun acuan untuk peta dunia",
+    year_min,
+    year_max,
+    year_max,
 )
 
-df_map = df_long[df_long["year"] == selected_year]
+# Ambil data sampai tahun yang dipilih
+df_up_to = df_long[df_long["year"] <= selected_year]
 
-st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
-
-if df_map.empty:
-    st.warning("Tidak ada data untuk tahun yang dipilih.")
+if df_up_to.empty:
+    st.warning("Tidak ada data hingga tahun yang dipilih.")
 else:
+    # Untuk tiap negara, ambil tahun terbaru yang tersedia ≤ selected_year
+    df_map = (
+        df_up_to.sort_values(["country", "year"])
+        .groupby("country", as_index=False)
+        .tail(1)
+    )
+
+    st.subheader(
+        f"🌍 Peta Dunia — {indicator_label} "
+        f"(nilai terbaru ≤ {selected_year})"
+    )
+
     try:
         fig = px.choropleth(
             df_map,
@@ -150,9 +164,10 @@ else:
             locationmode="country names",
             color="value",
             hover_name="country",
+            hover_data={"year": True},  # tampilkan tahun aktual di tooltip
             color_continuous_scale="Viridis",
-            title=f"{indicator_label} — {selected_year}",
-            labels={"value": indicator_label},
+            title=f"{indicator_label} — nilai terbaru per negara (≤ {selected_year})",
+            labels={"value": indicator_label, "year": "Tahun data"},
         )
         fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
         st.plotly_chart(fig, use_container_width=True)
