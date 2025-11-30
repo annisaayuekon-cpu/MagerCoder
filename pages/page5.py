@@ -21,16 +21,33 @@ DATA_FILES = {
 def load_and_transform(csv_name: str) -> pd.DataFrame:
     """
     Baca CSV, ubah ke long format (Year, Value) untuk tiap negara.
-    Asumsi format World Bank: kolom tahun = 1960, 1961, ..., 2024.
+    Dibuat lebih toleran terhadap format CSV yang berantakan.
     """
     file_path = os.path.join(DATA_DIR, csv_name)
-    df_raw = pd.read_csv(file_path)
 
-    # cari kolom tahun (nama kolom berupa angka)
+    # 1) Coba baca standar
+    try:
+        df_raw = pd.read_csv(file_path)
+    except pd.errors.ParserError:
+        # 2) Coba baca dengan delimiter ';'
+        try:
+            df_raw = pd.read_csv(file_path, sep=";")
+        except pd.errors.ParserError:
+            # 3) Last resort: pakai engine python & skip baris bermasalah
+            df_raw = pd.read_csv(
+                file_path,
+                engine="python",
+                on_bad_lines="skip"
+            )
+
+    # cari kolom tahun (nama kolom berupa angka, misal 1960, 1961, dst.)
     year_cols = [c for c in df_raw.columns if str(c).isdigit()]
 
     if not year_cols:
-        st.error("Tidak menemukan kolom tahun di file: " + csv_name)
+        st.error(
+            "Tidak menemukan kolom tahun di file: "
+            f"{csv_name}. Cek lagi apakah header tahunnya berupa 1960, 1961, dst."
+        )
         return pd.DataFrame()
 
     # wide → long
