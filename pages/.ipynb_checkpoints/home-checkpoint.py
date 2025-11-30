@@ -1,16 +1,51 @@
 
-
 # pages/home.py
 import streamlit as st
 import pandas as pd
-import os
 import plotly.express as px
+import os
 
-st.set_page_config(page_title="Home — Ringkasan 10 Indikator", layout="wide", page_icon="📊")
+st.set_page_config(page_title="Dashboard Ekonomi", layout="wide", page_icon="📊")
 
+# ---------------------------
+# CSS: biru pastel (theme)
+# ---------------------------
+st.markdown("""
+<style>
+.section-title {
+    background: #7db0ff;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+.card {
+    background: white;
+    padding: 14px;
+    border-radius: 10px;
+    border: 2px solid #cfe5ff;
+    margin-bottom: 16px;
+}
+.kpi-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: #123a6a;
+}
+.kpi-label {
+    font-size: 13px;
+    color: #406a9a;
+}
+.small-note { color: #6b879f; font-size:12px; }
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------
+# Data files mapping (10 indikator)
+# Sesuaikan nama file di folder data/ jika beda
+# ---------------------------
 DATA_DIR = "data"
-
-# --- 10 indikator utama (key -> filename in data/)
 FILES = {
     "GDP growth (%)": "1.3 GDP growth (%).csv",
     "GDP per capita": "1.2. GDP PER CAPITA.csv",
@@ -37,7 +72,9 @@ ICONS = {
     "CO2 per capita": "🌍",
 }
 
-# ----------------- util: tolerant loader -----------------
+# ---------------------------
+# Util: load table tolerant
+# ---------------------------
 @st.cache_data
 def load_table(path: str) -> pd.DataFrame:
     if not path or not os.path.exists(path):
@@ -48,7 +85,7 @@ def load_table(path: str) -> pd.DataFrame:
             return pd.read_excel(path)
     except Exception:
         pass
-    # try common separators
+    # try separators
     for sep in [";", ",", "\t"]:
         try:
             df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
@@ -65,18 +102,18 @@ def detect_year_columns(df):
     return [c for c in df.columns if str(c).isdigit() and len(str(c)) == 4]
 
 def to_long_if_wide(df):
-    """Return long format (country, year, value) if possible. Supports wide and simple long."""
+    """Return dataframe long: country, year, value. Works for wide (years as cols) or simple long (has 'year')."""
     if df.empty:
         return pd.DataFrame()
     cols = [str(c).strip() for c in df.columns]
     lower = [c.lower() for c in cols]
-    # long if 'year' in columns
+    # long if 'year' col exists
     if "year" in lower:
-        # normalize
         df2 = df.copy()
         # find country col
         country_cols = [c for c in df2.columns if str(c).strip().lower() in ("country name","country","negara","entity")]
         country_col = country_cols[0] if country_cols else df2.columns[0]
+        # find value col(s)
         value_cols = [c for c in df2.columns if c not in [country_col, "Year", "year"]]
         if not value_cols:
             return pd.DataFrame()
@@ -87,7 +124,7 @@ def to_long_if_wide(df):
         long["year"] = pd.to_numeric(long["year"], errors="coerce")
         long["value"] = pd.to_numeric(long["value"], errors="coerce")
         return long.dropna(subset=["year","value"])
-    # otherwise wide -> melt
+    # wide -> melt
     years = detect_year_columns(df)
     if years:
         country_col = df.columns[0]
@@ -108,28 +145,26 @@ def latest_value_from_df(df):
         return None, last
     return float(vals.mean()), last
 
-# ----------------- Header (layout similar to contoh) -----------------
-st.markdown(
-    """
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <h1 style="margin:0">🏠 Ringkasan 10 Indikator Utama</h1>
-        <div style="color:gray">KPI — Tren — Peta — Ringkasan singkat</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:12px; color:gray">Sumber: World Bank / Data Lokal</div>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# ---------------------------
+# Header
+# ---------------------------
+st.markdown("""
+<div style="display:flex;justify-content:space-between;align-items:center">
+  <div>
+    <h1 style="margin:0;color:#123a6a">📊 DASHBOARD EKONOMI</h1>
+    <div class="small-note">Ringkasan 10 indikator utama — otomatis membaca file di folder <code>data/</code></div>
+  </div>
+  <div class="small-note">Sumber: World Bank / File lokal</div>
+</div>
+""", unsafe_allow_html=True)
 
-st.write("")  # spacer
+st.write("")
 
-# ----------------- KPI cards 10 indikator (2 rows of 5) -----------------
-st.subheader("KPI Utama")
+# ---------------------------
+# KPI cards (2 rows of 5)
+# ---------------------------
+st.markdown("<div class='section-title'>📌 KPI Utama</div>", unsafe_allow_html=True)
 kpi_keys = list(FILES.keys())
-# make 2 rows of 5
 rows = [kpi_keys[:5], kpi_keys[5:10]]
 for row in rows:
     cols = st.columns(5, gap="small")
@@ -138,72 +173,110 @@ for row in rows:
         dfk = load_table(os.path.join(DATA_DIR, fname))
         val, yr = latest_value_from_df(dfk) if not dfk.empty else (None, None)
         icon = ICONS.get(key, "📊")
-        bg = "#f6fbff"
-        card_html = f"""
-            <div style="background:{bg}; padding:10px; border-radius:8px; min-height:90px;">
-              <div style="font-size:16px;">{icon} <strong>{key}</strong></div>
-              <div style="font-size:20px; margin-top:6px;">{f'{val:,.2f}' if val is not None else '—'}</div>
-              <div style="color:gray; font-size:12px;">Tahun: {yr if yr else '-'}</div>
-            </div>
-        """
-        col.markdown(card_html, unsafe_allow_html=True)
+        with col:
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:14px;color:#406a9a'>{icon} <strong>{key}</strong></div>", unsafe_allow_html=True)
+            if val is None:
+                st.markdown("<div class='kpi-value'>—</div>", unsafe_allow_html=True)
+                st.markdown("<div class='kpi-label'>Tahun: -</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div class='kpi-value'>{val:,.2f}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='kpi-label'>Tahun: {yr}</div>", unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# ----------------- Trend area: 10 mini trends -----------------
-st.subheader("Tren Singkat 10 Indikator")
-trend_cols = st.columns(5)
-mini_cols = st.columns(5)
-# we will show 10 trends in two rows: first 5 in trend_cols, next 5 in mini_cols
-for i, key in enumerate(kpi_keys):
-    fname = FILES.get(key, "")
-    dfk = load_table(os.path.join(DATA_DIR, fname))
-    lg = to_long_if_wide(dfk)
-    target_col = trend_cols[i] if i < 5 else mini_cols[i - 5]
-    target_col.markdown(f"**{ICONS.get(key,'')} {key}**")
-    if not lg.empty:
-        agg = lg.groupby("year")["value"].mean().reset_index()
-        fig = px.line(agg, x="year", y="value")
-        fig.update_layout(height=120, margin=dict(t=6,b=6,l=6,r=6))
-        target_col.plotly_chart(fig, use_container_width=True)
-    else:
-        target_col.write("data tidak tersedia")
+# ---------------------------
+# Trend area: 10 mini-trend (2 rows of 5)
+# ---------------------------
+st.markdown("<div class='section-title'>📈 Tren Singkat (10 indikator)</div>", unsafe_allow_html=True)
+trend_rows = [kpi_keys[:5], kpi_keys[5:10]]
+for row in trend_rows:
+    cols = st.columns(5, gap="small")
+    for key, col in zip(row, cols):
+        fname = FILES.get(key, "")
+        dfk = load_table(os.path.join(DATA_DIR, fname))
+        lg = to_long_if_wide(dfk)
+        with col:
+            st.markdown("<div class='card'>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:14px;color:#406a9a'>{ICONS.get(key)} <strong>{key}</strong></div>", unsafe_allow_html=True)
+            if not lg.empty:
+                agg = lg.groupby("year")["value"].mean().reset_index()
+                fig = px.line(agg, x="year", y="value")
+                fig.update_layout(height=120, margin=dict(t=8,b=8,l=8,r=8), showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.write("data tidak tersedia")
+            st.markdown("</div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# ----------------- Summary map (pilih indikator & tahun) -----------------
-st.subheader("Peta Ringkasan")
-map_left, map_right = st.columns([3,1])
-with map_right:
+# ---------------------------
+# Map summary (select indicator + year)
+# ---------------------------
+st.markdown("<div class='section-title'>🌍 Peta Ringkasan</div>", unsafe_allow_html=True)
+map_col, ctrl_col = st.columns([3,1])
+
+with ctrl_col:
     sel_indicator = st.selectbox("Pilih indikator untuk peta", kpi_keys, index=0)
-    # load and prepare long
-    sel_file = FILES.get(sel_indicator,"")
+    sel_file = FILES.get(sel_indicator, "")
     sel_df = load_table(os.path.join(DATA_DIR, sel_file))
     sel_long = to_long_if_wide(sel_df)
     years_avail = sorted(sel_long["year"].unique().astype(int).tolist()) if not sel_long.empty else []
     year_map = st.select_slider("Tahun", years_avail, value=years_avail[-1] if years_avail else None) if years_avail else None
 
-with map_left:
+with map_col:
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
     if sel_long.empty or year_map is None:
-        st.info("Pilih indikator yang memiliki data (file ada dan kolom tahun).")
+        st.info("Pilih indikator yang tersedia (file ada dan berisi kolom tahun).")
     else:
         df_map = sel_long[sel_long["year"] == int(year_map)]
         if df_map.empty:
-            st.warning("Tidak ada data untuk tahun yang dipilih.")
+            st.warning("Tidak ada data untuk tahun terpilih.")
         else:
             try:
                 fig = px.choropleth(df_map, locations="country", locationmode="country names",
                                     color="value", hover_name="country",
-                                    color_continuous_scale="Viridis",
+                                    color_continuous_scale="Blues",
                                     title=f"{sel_indicator} — {year_map}")
                 fig.update_layout(margin=dict(t=40,l=0,r=0,b=0), height=520)
                 st.plotly_chart(fig, use_container_width=True)
             except Exception as e:
-                st.error("Gagal menggambar peta. Pastikan nama negara sesuai 'country names'.")
+                st.error("Gagal membuat peta. Periksa nama negara (harus country names standar).")
                 st.exception(e)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 st.write("---")
 
-st.caption("Tip: pastikan file CSV ada di folder 'data/' dan kolom tahun konsisten (mis. 2000, 2001, ...).")
+# ---------------------------
+# Grid ringkasan 10 indikator utama (small cards)
+# ---------------------------
+st.markdown("<div class='section-title'>📦 Ringkasan 10 Indikator</div>", unsafe_allow_html=True)
+grid_cols = st.columns(5, gap="small")
+for i, key in enumerate(kpi_keys):
+    col = grid_cols[i % 5]
+    fname = FILES.get(key, "")
+    dfk = load_table(os.path.join(DATA_DIR, fname))
+    lg = to_long_if_wide(dfk)
+    latest, latest_year = latest_value_from_df(dfk) if not dfk.empty else (None, None)
+    with col:
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:13px;color:#406a9a'>{ICONS.get(key)} <strong>{key}</strong></div>", unsafe_allow_html=True)
+        if latest is None:
+            st.markdown("<div style='font-size:18px; margin-top:6px;'>—</div>", unsafe_allow_html=True)
+            st.markdown("<div class='kpi-label'>Tahun: -</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div style='font-size:18px; margin-top:6px;'>{latest:,.2f}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='kpi-label'>Tahun: {latest_year}</div>", unsafe_allow_html=True)
+        if not lg.empty:
+            agg = lg.groupby("year")["value"].mean().reset_index().tail(8)
+            try:
+                fig = px.line(agg, x="year", y="value")
+                fig.update_layout(height=90, margin=dict(t=6,b=6,l=6,r=6), showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception:
+                pass
+        st.markdown("</div>", unsafe_allow_html=True)
 
-
+st.write("")
+st.caption("Tip: pastikan file CSV/XLSX berada di folder 'data/' dan kolom tahun konsisten (mis. 2000,2001,...).")
