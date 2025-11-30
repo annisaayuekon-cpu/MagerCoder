@@ -19,9 +19,9 @@ st.write(
 DATA_DIR = "data"
 
 FILES = {
-    "Poverty headcount ratio at $4.20 a day": "6.1 POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
-    "Gini index": "6.2 GINI INDEX.csv",
-    "Income share held by lowest 20%": "6.3 INCOME SHARE HELD BY LOWER 20%.csv",
+    "Poverty headcount ratio at $4.20 a day": "6.1. POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
+    "Gini index": "6.2. GINI INDEX.csv",
+    "Income share held by lowest 20%": "6.3. INCOME SHARE HELD BY LOWER 20%.csv",
 }
 
 # -----------------------------
@@ -57,27 +57,22 @@ def load_csv_tolerant(path: str) -> pd.DataFrame:
 
 
 # -----------------------------
-# Cek file yang tersedia
-# -----------------------------
-available_indicators = []
-for label, fname in FILES.items():
-    if os.path.exists(os.path.join(DATA_DIR, fname)):
-        available_indicators.append(label)
-
-if not available_indicators:
-    st.error(
-        f"Tidak ada file CSV Page 6 yang ditemukan di folder `{DATA_DIR}/`. "
-        "Pastikan file 6.1, 6.2, dan 6.3 sudah diletakkan di sana."
-    )
-    st.stop()
-
-# -----------------------------
 # Pilih indikator & load data
 # -----------------------------
 indicator_label = st.selectbox(
-    "Pilih indikator kemiskinan/ketimpangan", available_indicators
+    "Pilih indikator kemiskinan/ketimpangan",
+    list(FILES.keys()),
 )
+
 file_path = os.path.join(DATA_DIR, FILES[indicator_label])
+
+if not os.path.exists(file_path):
+    st.error(
+        f"File untuk indikator **{indicator_label}** tidak ditemukan.\n\n"
+        f"Cari di folder `{DATA_DIR}/` nama: `{FILES[indicator_label]}` "
+        "(cek lagi ejaan, spasi, huruf besar-kecil)."
+    )
+    st.stop()
 
 try:
     df = load_csv_tolerant(file_path)
@@ -138,16 +133,30 @@ year_min = int(min(years))
 year_max = int(max(years))
 
 selected_year = st.slider(
-    "Pilih tahun untuk peta dunia", year_min, year_max, year_max
+    "Pilih tahun acuan untuk peta dunia",
+    year_min,
+    year_max,
+    year_max,
 )
 
-df_map = df_long[df_long["year"] == selected_year]
+# Ambil data sampai tahun yang dipilih
+df_up_to = df_long[df_long["year"] <= selected_year]
 
-st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
-
-if df_map.empty:
-    st.warning("Tidak ada data untuk tahun yang dipilih.")
+if df_up_to.empty:
+    st.warning("Tidak ada data hingga tahun yang dipilih.")
 else:
+    # Untuk tiap negara, ambil tahun terbaru yang tersedia ≤ selected_year
+    df_map = (
+        df_up_to.sort_values(["country", "year"])
+        .groupby("country", as_index=False)
+        .tail(1)
+    )
+
+    st.subheader(
+        f"🌍 Peta Dunia — {indicator_label} "
+        f"(nilai terbaru ≤ {selected_year})"
+    )
+
     try:
         fig = px.choropleth(
             df_map,
@@ -155,9 +164,10 @@ else:
             locationmode="country names",
             color="value",
             hover_name="country",
+            hover_data={"year": True},  # tampilkan tahun aktual di tooltip
             color_continuous_scale="Viridis",
-            title=f"{indicator_label} — {selected_year}",
-            labels={"value": indicator_label},
+            title=f"{indicator_label} — nilai terbaru per negara (≤ {selected_year})",
+            labels={"value": indicator_label, "year": "Tahun data"},
         )
         fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
         st.plotly_chart(fig, use_container_width=True)
