@@ -19,9 +19,9 @@ st.write(
 DATA_DIR = "data"
 
 FILES = {
-    "Poverty headcount ratio at $4.20 a day": "6.1 POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
-    "Gini index": "6.2 GINI INDEX.csv",
-    "Income share held by lowest 20%": "6.3 INCOME SHARE HELD BY LOWER 20%.csv",
+    "Poverty headcount ratio at $4.20 a day": "6.1. POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
+    "Gini index": "6.2. GINI INDEX.csv",
+    "Income share held by lowest 20%": "6.3. INCOME SHARE HELD BY LOWER 20%.csv",
 }
 
 # -----------------------------
