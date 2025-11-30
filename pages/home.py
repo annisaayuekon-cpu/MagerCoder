@@ -1,282 +1,308 @@
-
-# pages/home.py
+# home.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import os
+import plotly.express as px
 
-st.set_page_config(page_title="Dashboard Ekonomi", layout="wide", page_icon="📊")
-
-# ---------------------------
-# CSS: biru pastel (theme)
-# ---------------------------
-st.markdown("""
-<style>
-.section-title {
-    background: #7db0ff;
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 10px;
-}
-.card {
-    background: white;
-    padding: 14px;
-    border-radius: 10px;
-    border: 2px solid #cfe5ff;
-    margin-bottom: 16px;
-}
-.kpi-value {
-    font-size: 26px;
-    font-weight: 800;
-    color: #123a6a;
-}
-.kpi-label {
-    font-size: 13px;
-    color: #406a9a;
-}
-.small-note { color: #6b879f; font-size:12px; }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------------------
-# Data files mapping (10 indikator)
-# Sesuaikan nama file di folder data/ jika beda
-# ---------------------------
 DATA_DIR = "data"
-FILES = {
+
+# 10 indikator utama + nama file CSV-nya
+MAIN_INDICATORS = {
+    "GDP per capita (current US$)": "1.2. GDP PER CAPITA.csv",
     "GDP growth (%)": "1.3 GDP growth (%).csv",
-    "GDP per capita": "1.2. GDP PER CAPITA.csv",
-    "GDP (current US$)": "1.1. GDP (CURRENT US$).csv",
-    "Unemployment rate": "2.2 Unemployment rate.csv",
-    "Labor force participation": "2.1 Labor force participation rate.csv",
-    "Inflation (CPI)": "3.1 Inflation, consumer prices (%).csv",
-    "Exports (% of GDP)": "4.1 Exports.csv",
-    "FDI (net inflow)": "5.1 Foreign Direct Investment (FDI).csv",
-    "GINI index": "7.2 GINI.csv",
-    "CO2 per capita": "10.1. CO EMISSIONS.csv",
+    "Unemployment rate (%)": "2.2 Unemployment rate.csv",
+    "Labor force participation rate (%)": "2.1 Labor force participation rate.csv",
+    "Inflation, consumer prices (%)": "3.1 Inflation, consumer prices (%).csv",
+    "Trade openness (% of GDP)": "4.4 Trade openness.csv",
+    "FDI inflows (current US$)": "5.1 Foreign Direct Investment (FDI).csv",
+    "Poverty headcount ratio ($4.20/day) (%)": "6.1. POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
+    "GINI index": "6.2. GINI INDEX.csv",
+    "CO₂ emissions (t per capita)": "10.1. CO EMISSIONS.csv",
 }
 
-ICONS = {
-    "GDP growth (%)": "📈",
-    "GDP per capita": "💰",
-    "GDP (current US$)": "🌐",
-    "Unemployment rate": "👥",
-    "Labor force participation": "🧑‍💼",
-    "Inflation (CPI)": "🔥",
-    "Exports (% of GDP)": "🚢",
-    "FDI (net inflow)": "💼",
-    "GINI index": "⚖️",
-    "CO2 per capita": "🌍",
-}
-
-# ---------------------------
-# Util: load table tolerant
-# ---------------------------
+# ---------------- Utilitas umum ----------------
 @st.cache_data
-def load_table(path: str) -> pd.DataFrame:
-    if not path or not os.path.exists(path):
+def load_csv(path: str) -> pd.DataFrame:
+    if not os.path.exists(path):
         return pd.DataFrame()
-    ext = os.path.splitext(path)[1].lower()
-    try:
-        if ext in (".xls", ".xlsx"):
-            return pd.read_excel(path)
-    except Exception:
-        pass
-    # try separators
+    # coba beberapa separator
     for sep in [";", ",", "\t"]:
         try:
             df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
-            if df.shape[1] > 1:
+            if df.shape[1] >= 5:
                 return df
         except Exception:
-            pass
-    try:
-        return pd.read_csv(path, engine="python", on_bad_lines="skip")
-    except Exception:
-        return pd.DataFrame()
+            continue
+    # fallback
+    return pd.read_csv(path, engine="python", on_bad_lines="skip")
 
-def detect_year_columns(df):
+
+def detect_year_columns(df: pd.DataFrame):
     return [c for c in df.columns if str(c).isdigit() and len(str(c)) == 4]
 
-def to_long_if_wide(df):
-    """Return dataframe long: country, year, value. Works for wide (years as cols) or simple long (has 'year')."""
+
+def detect_country_col(df: pd.DataFrame):
+    for cand in ["Country Name", "Country", "Negara", "Entity", "country"]:
+        if cand in df.columns:
+            return cand
+    return df.columns[0]
+
+
+def long_one_country(df: pd.DataFrame, country: str) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
-    cols = [str(c).strip() for c in df.columns]
-    lower = [c.lower() for c in cols]
-    # long if 'year' col exists
-    if "year" in lower:
-        df2 = df.copy()
-        # find country col
-        country_cols = [c for c in df2.columns if str(c).strip().lower() in ("country name","country","negara","entity")]
-        country_col = country_cols[0] if country_cols else df2.columns[0]
-        # find value col(s)
-        value_cols = [c for c in df2.columns if c not in [country_col, "Year", "year"]]
-        if not value_cols:
-            return pd.DataFrame()
-        value_col = value_cols[0]
-        long = df2[[country_col, "Year" if "Year" in df2.columns else "year", value_col]].rename(
-            columns={country_col: "country", value_col: "value", "Year": "year"}
-        )
-        long["year"] = pd.to_numeric(long["year"], errors="coerce")
-        long["value"] = pd.to_numeric(long["value"], errors="coerce")
-        return long.dropna(subset=["year","value"])
-    # wide -> melt
     years = detect_year_columns(df)
-    if years:
-        country_col = df.columns[0]
-        long = df.melt(id_vars=[country_col], value_vars=years, var_name="year", value_name="value")
-        long = long.rename(columns={country_col: "country"})
-        long["year"] = pd.to_numeric(long["year"], errors="coerce")
-        long["value"] = pd.to_numeric(long["value"], errors="coerce")
-        return long.dropna(subset=["value"])
-    return pd.DataFrame()
+    if not years:
+        return pd.DataFrame()
+    ccol = detect_country_col(df)
+    sub = df[df[ccol] == country]
+    if sub.empty:
+        return pd.DataFrame()
+    row = sub.iloc[0].copy()
+    data = []
+    for y in sorted([int(y) for y in years]):
+        val = pd.to_numeric([row[str(y)]], errors="coerce")[0]
+        if pd.notna(val):
+            data.append({"year": int(y), "value": float(val)})
+    return pd.DataFrame(data)
 
-def latest_value_from_df(df):
+
+def latest_value_country(df: pd.DataFrame, country: str):
+    """
+    Ambil nilai terakhir (tahun terbaru yang tidak NaN) untuk negara tertentu.
+    Return: (value, year) atau (None, None)
+    """
+    ts = long_one_country(df, country)
+    if ts.empty:
+        return None, None
+    last_row = ts.sort_values("year").iloc[-1]
+    return float(last_row["value"]), int(last_row["year"])
+
+
+def long_all_countries(df: pd.DataFrame) -> pd.DataFrame:
+    years = detect_year_columns(df)
+    if not years:
+        return pd.DataFrame()
+    ccol = detect_country_col(df)
+    df_long = df.melt(
+        id_vars=[ccol],
+        value_vars=years,
+        var_name="year",
+        value_name="value",
+    )
+    df_long = df_long.rename(columns={ccol: "country"})
+    df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce")
+    df_long["value"] = pd.to_numeric(df_long["value"], errors="coerce")
+    df_long = df_long.dropna(subset=["value"])
+    return df_long
+
+
+# ---------------- Header ----------------
+st.markdown("<h1 style='margin:0;'>🏠 Ringkasan Utama Dashboard Ekonomi</h1>", unsafe_allow_html=True)
+st.markdown("Pilih negara, lalu lihat **KPI utama**, tren singkat, peta dunia, dan ringkasan indikator dari 10 tema ekonomi.")
+
+# ---------------- Pilih negara untuk KPI & tren ----------------
+# ambil list negara dari salah satu file (GDP per capita)
+sample_file = list(MAIN_INDICATORS.values())[0]
+sample_df = load_csv(os.path.join(DATA_DIR, sample_file))
+if sample_df.empty:
+    st.error("Tidak bisa memuat data negara dari file referensi. Cek folder `data/`.")
+    st.stop()
+
+country_col = detect_country_col(sample_df)
+countries = sorted(sample_df[country_col].dropna().unique().tolist())
+default_country = "Indonesia" if "Indonesia" in countries else countries[0]
+
+st.markdown("### 🌍 Pilih Negara")
+selected_country = st.selectbox("Negara untuk KPI dan tren utama:", countries, index=countries.index(default_country))
+
+st.write("---")
+
+# ---------------- KPI Cards (berdasarkan negara) ----------------
+st.markdown("### 🎯 KPI Utama per Negara")
+
+kpi_meta = [
+    ("GDP per capita (current US$)", "💰"),
+    ("GDP growth (%)", "📈"),
+    ("Unemployment rate (%)", "👷"),
+    ("Labor force participation rate (%)", "🧑‍💼"),
+    ("Inflation, consumer prices (%)", "🔥"),
+    ("Trade openness (% of GDP)", "🌐"),
+    ("FDI inflows (current US$)", "🏦"),
+    ("Poverty headcount ratio ($4.20/day) (%)", "📉"),
+    ("GINI index", "⚖️"),
+    ("CO₂ emissions (t per capita)", "🌫️"),
+]
+
+def render_kpi_card(col, title, emoji, country):
+    fname = MAIN_INDICATORS.get(title, "")
+    path = os.path.join(DATA_DIR, fname) if fname else ""
+    df = load_csv(path) if path else pd.DataFrame()
+    val, yr = latest_value_country(df, country)
+    if val is None:
+        value_txt = "—"
+        year_txt = "-"
+    else:
+        # format beda sedikit utk persen vs level
+        if "%" in title:
+            value_txt = f"{val:,.2f}%"
+        else:
+            value_txt = f"{val:,.2f}"
+        year_txt = str(yr)
+
+    card_html = f"""
+    <div style="
+        border:1px solid #3182ce;
+        border-radius:12px;
+        padding:12px 14px;
+        background-color:#ffffff;
+        height:120px;
+        display:flex;
+        flex-direction:column;
+        justify-content:space-between;
+    ">
+      <div style="font-size:18px;">{emoji} <strong>{title}</strong></div>
+      <div style="font-size:24px; margin-top:4px;">{value_txt}</div>
+      <div style="color:#555; font-size:11px;">Negara: {country} • Tahun: {year_txt}</div>
+    </div>
+    """
+    col.markdown(card_html, unsafe_allow_html=True)
+
+
+row1 = st.columns(5)
+row2 = st.columns(5)
+
+for (title, emoji), col in zip(kpi_meta[:5], row1):
+    render_kpi_card(col, title, emoji, selected_country)
+
+for (title, emoji), col in zip(kpi_meta[5:], row2):
+    render_kpi_card(col, title, emoji, selected_country)
+
+st.write("---")
+
+# ---------------- Tren singkat 10 indikator (per negara) ----------------
+st.markdown("### 📈 Tren Singkat per Negara")
+
+row_t1 = st.columns(5)
+row_t2 = st.columns(5)
+
+for (title, _), col in zip(kpi_meta[:5], row_t1):
+    fname = MAIN_INDICATORS.get(title, "")
+    df = load_csv(os.path.join(DATA_DIR, fname)) if fname else pd.DataFrame()
+    ts = long_one_country(df, selected_country)
+    col.markdown(f"**{title}**")
+    if ts.empty:
+        col.caption("Data tidak tersedia.")
+    else:
+        fig = px.line(ts, x="year", y="value", markers=True)
+        fig.update_layout(
+            height=160,
+            margin=dict(t=10, b=10, l=10, r=10),
+            xaxis_title="",
+            yaxis_title="",
+        )
+        col.plotly_chart(fig, use_container_width=True)
+
+for (title, _), col in zip(kpi_meta[5:], row_t2):
+    fname = MAIN_INDICATORS.get(title, "")
+    df = load_csv(os.path.join(DATA_DIR, fname)) if fname else pd.DataFrame()
+    ts = long_one_country(df, selected_country)
+    col.markdown(f"**{title}**")
+    if ts.empty:
+        col.caption("Data tidak tersedia.")
+    else:
+        fig = px.line(ts, x="year", y="value", markers=True)
+        fig.update_layout(
+            height=160,
+            margin=dict(t=10, b=10, l=10, r=10),
+            xaxis_title="",
+            yaxis_title="",
+        )
+        col.plotly_chart(fig, use_container_width=True)
+
+st.write("---")
+
+# ---------------- Peta ringkasan (pilih 1 indikator) ----------------
+st.markdown("### 🗺️ Peta Dunia per Indikator")
+
+indicator_for_map = st.selectbox("Pilih indikator untuk peta dunia:", list(MAIN_INDICATORS.keys()))
+map_file = MAIN_INDICATORS[indicator_for_map]
+df_map_raw = load_csv(os.path.join(DATA_DIR, map_file))
+df_long_all = long_all_countries(df_map_raw)
+
+if df_long_all.empty:
+    st.info("Data untuk peta dunia belum tersedia / format tidak sesuai.")
+else:
+    years_avail = sorted(df_long_all["year"].unique())
+    year_map = st.slider(
+        "Pilih tahun:",
+        int(min(years_avail)),
+        int(max(years_avail)),
+        int(max(years_avail)),
+    )
+
+    df_year = df_long_all[df_long_all["year"] == year_map].copy()
+    st.caption(f"Peta nilai {indicator_for_map} pada tahun {year_map}.")
+
+    fig_map = px.choropleth(
+        df_year,
+        locations="country",
+        locationmode="country names",
+        color="value",
+        hover_name="country",
+        color_continuous_scale="Viridis",
+        title=f"{indicator_for_map} — {year_map}",
+    )
+    fig_map.update_layout(margin=dict(t=40, r=0, l=0, b=0))
+    st.plotly_chart(fig_map, use_container_width=True)
+
+st.write("---")
+
+# ---------------- Grid ringkasan (global, semua negara) ----------------
+st.markdown("### 📦 Ringkasan Cepat 10 Indikator (Global)")
+
+def latest_global_mean(df: pd.DataFrame):
     years = detect_year_columns(df)
     if not years:
         return None, None
-    last = str(sorted(int(y) for y in years)[-1])
-    vals = pd.to_numeric(df[last], errors="coerce").dropna()
-    if vals.empty:
-        return None, last
-    return float(vals.mean()), last
+    years_int = sorted([int(y) for y in years])
+    for y in reversed(years_int):
+        col_y = str(y)
+        vals = pd.to_numeric(df[col_y], errors="coerce").dropna()
+        if not vals.empty:
+            return float(vals.mean()), y
+    return None, None
 
-# ---------------------------
-# Header
-# ---------------------------
-st.markdown("""
-<div style="display:flex;justify-content:space-between;align-items:center">
-  <div>
-    <h1 style="margin:0;color:#123a6a">📊 DASHBOARD EKONOMI</h1>
-    <div class="small-note">Ringkasan 10 indikator utama — otomatis membaca file di folder <code>data/</code></div>
-  </div>
-  <div class="small-note">Sumber: World Bank / File lokal</div>
-</div>
-""", unsafe_allow_html=True)
+rows = []
+items = list(MAIN_INDICATORS.items())
+for i in range(0, len(items), 2):
+    rows.append(items[i:i+2])
 
-st.write("")
-
-# ---------------------------
-# KPI cards (2 rows of 5)
-# ---------------------------
-st.markdown("<div class='section-title'>📌 KPI Utama</div>", unsafe_allow_html=True)
-kpi_keys = list(FILES.keys())
-rows = [kpi_keys[:5], kpi_keys[5:10]]
-for row in rows:
-    cols = st.columns(5, gap="small")
-    for key, col in zip(row, cols):
-        fname = FILES.get(key, "")
-        dfk = load_table(os.path.join(DATA_DIR, fname))
-        val, yr = latest_value_from_df(dfk) if not dfk.empty else (None, None)
-        icon = ICONS.get(key, "📊")
-        with col:
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
-            st.markdown(f"<div style='font-size:14px;color:#406a9a'>{icon} <strong>{key}</strong></div>", unsafe_allow_html=True)
-            if val is None:
-                st.markdown("<div class='kpi-value'>—</div>", unsafe_allow_html=True)
-                st.markdown("<div class='kpi-label'>Tahun: -</div>", unsafe_allow_html=True)
-            else:
-                st.markdown(f"<div class='kpi-value'>{val:,.2f}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div class='kpi-label'>Tahun: {yr}</div>", unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-
-st.write("---")
-
-# ---------------------------
-# Trend area: 10 mini-trend (2 rows of 5)
-# ---------------------------
-st.markdown("<div class='section-title'>📈 Tren Singkat (10 indikator)</div>", unsafe_allow_html=True)
-trend_rows = [kpi_keys[:5], kpi_keys[5:10]]
-for row in trend_rows:
-    cols = st.columns(5, gap="small")
-    for key, col in zip(row, cols):
-        fname = FILES.get(key, "")
-        dfk = load_table(os.path.join(DATA_DIR, fname))
-        lg = to_long_if_wide(dfk)
-        with col:
-            st.markdown("<div class='card'>", unsafe_allow_html=True)
-            st.markdown(f"<div style='font-size:14px;color:#406a9a'>{ICONS.get(key)} <strong>{key}</strong></div>", unsafe_allow_html=True)
-            if not lg.empty:
-                agg = lg.groupby("year")["value"].mean().reset_index()
-                fig = px.line(agg, x="year", y="value")
-                fig.update_layout(height=120, margin=dict(t=8,b=8,l=8,r=8), showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.write("data tidak tersedia")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-st.write("---")
-
-# ---------------------------
-# Map summary (select indicator + year)
-# ---------------------------
-st.markdown("<div class='section-title'>🌍 Peta Ringkasan</div>", unsafe_allow_html=True)
-map_col, ctrl_col = st.columns([3,1])
-
-with ctrl_col:
-    sel_indicator = st.selectbox("Pilih indikator untuk peta", kpi_keys, index=0)
-    sel_file = FILES.get(sel_indicator, "")
-    sel_df = load_table(os.path.join(DATA_DIR, sel_file))
-    sel_long = to_long_if_wide(sel_df)
-    years_avail = sorted(sel_long["year"].unique().astype(int).tolist()) if not sel_long.empty else []
-    year_map = st.select_slider("Tahun", years_avail, value=years_avail[-1] if years_avail else None) if years_avail else None
-
-with map_col:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    if sel_long.empty or year_map is None:
-        st.info("Pilih indikator yang tersedia (file ada dan berisi kolom tahun).")
-    else:
-        df_map = sel_long[sel_long["year"] == int(year_map)]
-        if df_map.empty:
-            st.warning("Tidak ada data untuk tahun terpilih.")
+for pair in rows:
+    cols = st.columns(len(pair))
+    for (label, fname), col in zip(pair, cols):
+        df = load_csv(os.path.join(DATA_DIR, fname))
+        val, yr = latest_global_mean(df)
+        col.markdown(f"**{label}**")
+        if val is None:
+            col.caption("Ringkasan global belum tersedia.")
         else:
-            try:
-                fig = px.choropleth(df_map, locations="country", locationmode="country names",
-                                    color="value", hover_name="country",
-                                    color_continuous_scale="Blues",
-                                    title=f"{sel_indicator} — {year_map}")
-                fig.update_layout(margin=dict(t=40,l=0,r=0,b=0), height=520)
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.error("Gagal membuat peta. Periksa nama negara (harus country names standar).")
-                st.exception(e)
-    st.markdown("</div>", unsafe_allow_html=True)
+            col.metric(f"Rata-rata global {yr}", f"{val:,.2f}")
+            long_df = long_all_countries(df)
+            if not long_df.empty:
+                agg = (
+                    long_df.groupby("year")["value"]
+                    .mean()
+                    .reset_index()
+                    .tail(15)
+                )
+                fig_g = px.line(agg, x="year", y="value")
+                fig_g.update_layout(
+                    height=130,
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    xaxis_title="",
+                    yaxis_title="",
+                )
+                col.plotly_chart(fig_g, use_container_width=True)
 
-st.write("---")
-
-# ---------------------------
-# Grid ringkasan 10 indikator utama (small cards)
-# ---------------------------
-st.markdown("<div class='section-title'>📦 Ringkasan 10 Indikator</div>", unsafe_allow_html=True)
-grid_cols = st.columns(5, gap="small")
-for i, key in enumerate(kpi_keys):
-    col = grid_cols[i % 5]
-    fname = FILES.get(key, "")
-    dfk = load_table(os.path.join(DATA_DIR, fname))
-    lg = to_long_if_wide(dfk)
-    latest, latest_year = latest_value_from_df(dfk) if not dfk.empty else (None, None)
-    with col:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:13px;color:#406a9a'>{ICONS.get(key)} <strong>{key}</strong></div>", unsafe_allow_html=True)
-        if latest is None:
-            st.markdown("<div style='font-size:18px; margin-top:6px;'>—</div>", unsafe_allow_html=True)
-            st.markdown("<div class='kpi-label'>Tahun: -</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div style='font-size:18px; margin-top:6px;'>{latest:,.2f}</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='kpi-label'>Tahun: {latest_year}</div>", unsafe_allow_html=True)
-        if not lg.empty:
-            agg = lg.groupby("year")["value"].mean().reset_index().tail(8)
-            try:
-                fig = px.line(agg, x="year", y="value")
-                fig.update_layout(height=90, margin=dict(t=6,b=6,l=6,r=6), showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception:
-                pass
-        st.markdown("</div>", unsafe_allow_html=True)
-
-st.write("")
-st.caption("Tip: pastikan file CSV/XLSX berada di folder 'data/' dan kolom tahun konsisten (mis. 2000,2001,...).")
+st.info("Gunakan sidebar untuk berpindah ke halaman 1–10 dan melihat detail masing-masing kelompok indikator.")
