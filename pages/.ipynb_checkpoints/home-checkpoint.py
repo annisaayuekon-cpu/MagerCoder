@@ -6,7 +6,7 @@ import pandas as pd
 import os
 import plotly.express as px
 
-st.set_page_config(page_title="Home — Ringkasan 10 Indikator", layout="wide", page_icon="🏠")
+st.set_page_config(page_title="Home — Ringkasan 10 Indikator", layout="wide", page_icon="📊")
 
 DATA_DIR = "data"
 
@@ -204,35 +204,6 @@ with map_left:
 
 st.write("---")
 
-# ----------------- Grid ringkasan 10 indikator utama -----------------
-st.subheader("Ringkasan 10 Indikator Utama")
-grid_cols = st.columns(5)
-for i, key in enumerate(kpi_keys):
-    col = grid_cols[i % 5]
-    fname = FILES.get(key,"")
-    dfk = load_table(os.path.join(DATA_DIR, fname))
-    lg = to_long_if_wide(dfk)
-    # latest value
-    latest = None
-    latest_year = None
-    if not dfk.empty:
-        latest, latest_year = latest_value_from_df(dfk)
-    col.markdown(f"**{ICONS.get(key)} {key}**")
-    if latest is None:
-        col.write("— data tidak tersedia")
-    else:
-        col.metric(f"Tahun {latest_year}", f"{latest:,.2f}")
-    # small sparkline if long available
-    if not lg.empty:
-        agg = lg.groupby("year")["value"].mean().reset_index().tail(8)
-        try:
-            fig = px.line(agg, x="year", y="value")
-            fig.update_layout(height=100, margin=dict(t=6,b=6,l=6,r=6))
-            col.plotly_chart(fig, use_container_width=True)
-        except Exception:
-            pass
-
-st.write("")
 st.caption("Tip: pastikan file CSV ada di folder 'data/' dan kolom tahun konsisten (mis. 2000, 2001, ...).")
 
 
