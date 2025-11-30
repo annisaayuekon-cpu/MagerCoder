@@ -3,130 +3,213 @@
 import streamlit as st
 import pandas as pd
 import os
+import plotly.express as px
 
-st.title("Page 5 – Investment Indicators")
+st.set_page_config(layout="wide")
 
-# ==========================
-# KONFIGURASI FILE DATA
-# ==========================
-DATA_DIR = "data"  # ganti kalau folder datamu beda
+st.title("💰 Investasi & Pembentukan Modal — Peta Dunia + Time Series")
+st.write(
+    "Halaman ini menampilkan indikator terkait investasi dan pembentukan modal "
+    "berdasarkan data referensi lokal (file CSV) yang ada di folder `data/`."
+)
 
-DATA_FILES = {
+# -----------------------------
+# Lokasi folder data & mapping file
+# -----------------------------
+DATA_DIR = "data"
+
+FILES = {
     "Foreign direct investment (FDI)": "5.1 Foreign Direct Investment (FDI).csv",
     "Gross capital formation": "5.2 Gross capital formation.csv",
 }
 
-
+# -----------------------------
+# Helper baca CSV (lebih toleran)
+# -----------------------------
 @st.cache_data
-def load_and_transform(csv_name: str) -> pd.DataFrame:
+def load_csv_tolerant(path: str) -> pd.DataFrame:
     """
-    Baca CSV, ubah ke long format (Year, Value) untuk tiap negara.
-    Dibuat lebih toleran terhadap format CSV yang berantakan.
+    Coba baca CSV dengan beberapa delimiter dan lewati baris bermasalah.
     """
-    file_path = os.path.join(DATA_DIR, csv_name)
-
-    # 1) Coba baca standar
-    try:
-        df_raw = pd.read_csv(file_path)
-    except pd.errors.ParserError:
-        # 2) Coba baca dengan delimiter ';'
+    # Coba dengan ; , dan tab
+    for sep in [";", ",", "\t"]:
         try:
-            df_raw = pd.read_csv(file_path, sep=";")
-        except pd.errors.ParserError:
-            # 3) Last resort: pakai engine python & skip baris bermasalah
-            df_raw = pd.read_csv(
-                file_path,
+            df = pd.read_csv(
+                path,
+                sep=sep,
                 engine="python",
-                on_bad_lines="skip"
+                on_bad_lines="skip",  # baris yang sangat kacau akan dilewati
             )
+            # kalau cuma 1 kolom besar, mungkin delimiter-nya bukan itu
+            if df.shape[1] > 1:
+                return df
+        except Exception:
+            continue
 
-    # cari kolom tahun (nama kolom berupa angka, misal 1960, 1961, dst.)
-    year_cols = [c for c in df_raw.columns if str(c).isdigit()]
-
-    if not year_cols:
-        st.error(
-            "Tidak menemukan kolom tahun di file: "
-            f"{csv_name}. Cek lagi apakah header tahunnya berupa 1960, 1961, dst."
-        )
-        return pd.DataFrame()
-
-    # wide → long
-    df = df_raw.melt(
-        id_vars=[col for col in df_raw.columns if col not in year_cols],
-        value_vars=year_cols,
-        var_name="Year",
-        value_name="Value",
+    # Fallback: biarkan pandas tebak sendiri
+    df = pd.read_csv(
+        path,
+        engine="python",
+        on_bad_lines="skip",
     )
-
-    # rapikan tipe data
-    df["Year"] = pd.to_numeric(df["Year"], errors="coerce")
-    df["Value"] = pd.to_numeric(df["Value"], errors="coerce")
-
-    # buang baris kosong
-    df = df.dropna(subset=["Year", "Value"])
-
-    # standarisasi nama kolom negara kalau ada
-    if "Country Name" not in df.columns:
-        possible_country_cols = [
-            c for c in df.columns
-            if "country" in c.lower() and "name" in c.lower()
-        ]
-        if possible_country_cols:
-            df = df.rename(columns={possible_country_cols[0]: "Country Name"})
-        else:
-            non_year_cols = [c for c in df.columns if c not in ["Year", "Value"]]
-            if non_year_cols:
-                df = df.rename(columns={non_year_cols[0]: "Country Name"})
-
     return df
 
 
-def main():
-    if not DATA_FILES:
-        st.warning(
-            "Belum ada file yang dikonfigurasi untuk Page 5.\n\n"
-            "Silakan isi dictionary DATA_FILES di atas."
+# -----------------------------
+# Cek file yang tersedia
+# -----------------------------
+available_indicators = []
+for label, fname in FILES.items():
+    if os.path.exists(os.path.join(DATA_DIR, fname)):
+        available_indicators.append(label)
+
+if not available_indicators:
+    st.error(
+        f"Tidak ada file CSV Page 5 yang ditemukan di folder `{DATA_DIR}/`. "
+        "Pastikan file 5.1 dan 5.2 sudah diletakkan di sana."
+    )
+    st.stop()
+
+# -----------------------------
+# Pilih indikator & load data
+# -----------------------------
+indicator_label = st.selectbox(
+    "Pilih indikator investasi/pembentukan modal", available_indicators
+)
+file_path = os.path.join(DATA_DIR, FILES[indicator_label])
+
+try:
+    df = load_csv_tolerant(file_path)
+except Exception as e:
+    st.error(f"Gagal membaca file `{os.path.basename(file_path)}`: {e}")
+    st.stop()
+
+st.subheader("📄 Preview Data Mentah")
+st.dataframe(df.head(15), use_container_width=True)
+
+# -----------------------------
+# Deteksi kolom tahun & negara
+# -----------------------------
+cols = [str(c) for c in df.columns]
+year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
+
+if not year_cols:
+    st.error(
+        "Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) "
+        "di file CSV ini. Cek kembali header kolom."
+    )
+    st.stop()
+
+country_col = None
+for cand in ["Country Name", "country", "Country", "Negara", "Entity"]:
+    if cand in df.columns:
+        country_col = cand
+        break
+
+if country_col is None:
+    # fallback: kolom pertama dianggap nama negara
+    country_col = df.columns[0]
+
+# Ubah ke format long: country, year, value
+df_long = df.melt(
+    id_vars=[country_col],
+    value_vars=year_cols,
+    var_name="year",
+    value_name="value",
+)
+
+df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce").astype("Int64")
+df_long = df_long.rename(columns={country_col: "country"})
+df_long = df_long.dropna(subset=["value", "year"])
+
+if df_long.empty:
+    st.error("Setelah transformasi, tidak ada data bernilai (semua NaN).")
+    st.stop()
+
+# pastikan year integer biasa untuk slider
+df_long["year"] = df_long["year"].astype(int)
+
+# -----------------------------
+# Slider tahun untuk peta
+# -----------------------------
+years = sorted(df_long["year"].unique())
+year_min = int(min(years))
+year_max = int(max(years))
+
+selected_year = st.slider(
+    "Pilih tahun untuk peta dunia", year_min, year_max, year_max
+)
+
+df_map = df_long[df_long["year"] == selected_year]
+
+st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
+
+if df_map.empty:
+    st.warning("Tidak ada data untuk tahun yang dipilih.")
+else:
+    try:
+        fig = px.choropleth(
+            df_map,
+            locations="country",
+            locationmode="country names",
+            color="value",
+            hover_name="country",
+            color_continuous_scale="Viridis",
+            title=f"{indicator_label} — {selected_year}",
+            labels={"value": indicator_label},
         )
-        return
+        fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0})
+        st.plotly_chart(fig, use_container_width=True)
+    except Exception as e:
+        st.error(
+            "Gagal membuat peta dunia. "
+            "Cek apakah nama negara di CSV sesuai standar country names Plotly.\n\n"
+            f"Detail error: {e}"
+        )
 
-    # pilih indikator
-    indikator = st.selectbox(
-        "Pilih indikator",
-        list(DATA_FILES.keys()),
-        index=0,
+# -----------------------------
+# Time series per negara
+# -----------------------------
+st.subheader("📈 Time Series per Negara")
+
+country_list = sorted(df_long["country"].dropna().unique().tolist())
+selected_country = st.selectbox(
+    "Pilih negara untuk grafik time series", country_list
+)
+
+df_country = (
+    df_long[df_long["country"] == selected_country]
+    .sort_values("year")
+)
+
+if df_country.empty:
+    st.write("Tidak ada data time series untuk negara ini.")
+else:
+    fig_ts = px.line(
+        df_country,
+        x="year",
+        y="value",
+        markers=True,
+        title=f"{indicator_label} — {selected_country}",
     )
-
-    csv_name = DATA_FILES[indikator]
-    df = load_and_transform(csv_name)
-
-    if df.empty:
-        st.info("Data untuk indikator ini belum bisa ditampilkan.")
-        return
-
-    # pilih negara
-    countries = sorted(df["Country Name"].dropna().unique())
-    negara = st.selectbox("Pilih negara", countries)
-
-    df_country = df[df["Country Name"] == negara].sort_values("Year")
-
-    st.subheader(f"Time Series {indikator} – {negara}")
-    st.line_chart(
-        df_country.set_index("Year")["Value"],
-        height=400,
+    fig_ts.update_layout(
+        xaxis_title="Tahun",
+        yaxis_title=indicator_label,
     )
+    st.plotly_chart(fig_ts, use_container_width=True)
 
-    # ringkasan angka terbaru
-    latest_year = int(df_country["Year"].max())
-    latest_value = df_country[df_country["Year"] == latest_year]["Value"].iloc[0]
+    st.dataframe(df_country.reset_index(drop=True))
 
-    st.caption(
-        f"Nilai terbaru ({latest_year}) untuk {indikator} di {negara}: "
-        f"**{latest_value:,.2f}**"
-    )
+# -----------------------------
+# Tabel lengkap & download
+# -----------------------------
+st.subheader("📘 Data Lengkap (long format)")
+st.dataframe(df_long.reset_index(drop=True), use_container_width=True)
 
-    with st.expander("Lihat cuplikan data mentah"):
-        st.dataframe(df_country.reset_index(drop=True))
-
-
-if __name__ == "__main__":
-    main()
+csv_download = df_long.to_csv(index=False)
+st.download_button(
+    "⬇ Download data (CSV)",
+    csv_download,
+    file_name=f"page5_investment_{indicator_label.replace(' ', '_')}.csv",
+    mime="text/csv",
+)
