@@ -26,6 +26,8 @@ FILES = {
     "Imports of goods": "4.2 Imports of goods and services.csv",
     "Tariff rates": "4.3 Tariff rates.csv",
     "Trade openness": "4.4 Trade openness.csv",
+    "Foreign direct investment (FDI)": "5.1 Foreign Direct Investment (FDI).csv",
+    "Gross capital formation": "5.2 Gross capital formation.csv",
 }
 
 # ---------------- tolerant CSV loader ----------------
