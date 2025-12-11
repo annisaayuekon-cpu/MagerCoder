@@ -186,7 +186,6 @@ def exclude_aggregates(df: pd.DataFrame) -> pd.DataFrame:
         return df
     return df[~df["country"].isin(EXCLUDED_AGGREGATES)]
 
-
 # -------------------------------------------------
 # Header
 # -------------------------------------------------
@@ -291,22 +290,25 @@ def render_kpi_card(col, title, emoji, long_df, country, year):
     bg = colors.get(title, "#f7f7f7")
 
     value = None
+    shown_year = year
+
     if (
         long_df is not None
         and not long_df.empty
         and country is not None
         and year is not None
     ):
-        sub = long_df[
-            (long_df["country"] == country) & (long_df["year"] == year)
-        ]
+        sub = long_df[long_df["country"] == country]
+        sub = sub[sub["year"] <= int(year)]
         if not sub.empty:
-            value = float(sub["value"].iloc[0])
+            last_row = sub.sort_values("year").iloc[-1]
+            value = float(last_row["value"])
+            shown_year = int(last_row["year"])
 
     display = "—" if value is None else f"{value:,.2f}"
     subtitle = (
-        f"{country}, {year}"
-        if (country is not None and year is not None)
+        f"{country}, {shown_year}"
+        if (country is not None and shown_year is not None)
         else "Data tidak tersedia"
     )
 
@@ -435,7 +437,6 @@ with table_col:
                 .tail(1)
             )
 
-            # buang regional, income group, multilateral aggregates
             df_year = exclude_aggregates(df_year)
 
             if df_year.empty:
@@ -462,7 +463,7 @@ st.subheader("Ringkasan Indikator Lainnya")
 
 files_items = list(FILES.items())
 for i in range(0, len(files_items), 3):
-    trio = files_items[i : i + 3]
+    trio = files_items[i: i + 3]
     cols = st.columns(3)
     for (label, fname), col in zip(trio, cols):
         df = load_csv(os.path.join(DATA_DIR, fname)) if fname else pd.DataFrame()
