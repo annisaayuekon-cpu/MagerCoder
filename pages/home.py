@@ -97,6 +97,7 @@ EXCLUDED_AGGREGATES = {
     "Latin America & Caribbean",
     "Latin America & Caribbean (excluding high income)",
     "Latin America & Caribbean (IDA & IBRD countries)",
+    "Latin America & the Caribbean (IDA & IBRD countries)",
     "Middle East & North Africa",
     "Middle East & North Africa (IDA & IBRD countries)",
     "South Asia",
@@ -106,12 +107,20 @@ EXCLUDED_AGGREGATES = {
     "IDA only",
     "IDA total",
     "IDA blend",
+    "IDA & IBRD total",
     "IBRD only",
     "Small states",
     "Other small states",
     "Fragile and conflict affected situations",
     "Heavily indebted poor countries (HIPC)",
     "Least developed countries: UN classification",
+
+    # kelompok demografi / kawasan lain yang bukan satu negara
+    "Post-demographic dividend",
+    "Early-demographic dividend",
+    "Late-demographic dividend",
+    "North America",
+    "Middle East, North Africa, Afghanistan & Pakistan",
 }
 
 # -------------------------------------------------
@@ -119,6 +128,7 @@ EXCLUDED_AGGREGATES = {
 # -------------------------------------------------
 @st.cache_data
 def load_csv(path: str) -> pd.DataFrame:
+    """Baca CSV dengan delimiter fleksibel dan lewati baris bermasalah."""
     if not os.path.exists(path):
         return pd.DataFrame()
     for sep in [";", ",", "\t"]:
@@ -149,7 +159,7 @@ def ensure_iso3(df: pd.DataFrame):
 
 
 def pivot_long_first_numeric(df: pd.DataFrame) -> pd.DataFrame:
-    """country, year, value (long format)."""
+    """Ubah ke format long: country, year, value."""
     years = detect_year_columns(df)
     if not years:
         return pd.DataFrame()
@@ -169,6 +179,7 @@ def pivot_long_first_numeric(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def latest_value(df: pd.DataFrame):
+    """Ambil rata-rata global tahun terakhir dalam dataframe wide."""
     years = detect_year_columns(df)
     if not years:
         return None, None
@@ -177,7 +188,7 @@ def latest_value(df: pd.DataFrame):
     vals = pd.to_numeric(df[last], errors="coerce").dropna()
     if vals.empty:
         return None, last
-    return float(vals.mean()), last  # rata-rata global
+    return float(vals.mean()), last
 
 
 def exclude_aggregates(df: pd.DataFrame) -> pd.DataFrame:
@@ -185,6 +196,7 @@ def exclude_aggregates(df: pd.DataFrame) -> pd.DataFrame:
     if "country" not in df.columns:
         return df
     return df[~df["country"].isin(EXCLUDED_AGGREGATES)]
+
 
 # -------------------------------------------------
 # Header
@@ -281,6 +293,7 @@ col1, col2, col3, col4 = st.columns(4, gap="large")
 
 
 def render_kpi_card(col, title, emoji, long_df, country, year):
+    """Kartu KPI: ambil nilai terbaru ≤ tahun yang dipilih."""
     colors = {
         "GDP growth (%)": "#ffe8d6",
         "GDP per capita": "#e8f6ff",
@@ -338,7 +351,7 @@ for (title, emoji), col in zip(
 st.write("---")
 
 # -------------------------------------------------
-# Mini trend – agregat global
+# Mini trend – agregat global (rata-rata)
 # -------------------------------------------------
 st.subheader("Tren Singkat")
 
@@ -437,6 +450,7 @@ with table_col:
                 .tail(1)
             )
 
+            # buang regional, income group, multilateral aggregates
             df_year = exclude_aggregates(df_year)
 
             if df_year.empty:
