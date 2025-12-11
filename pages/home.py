@@ -150,8 +150,6 @@ EXCLUDED_AGGREGATES = {
     "Middle East, North Africa, Afghanistan & Pakistan",
 }
 
-}
-
 # -------------------------------------------------
 # Helper: tolerant CSV loader
 # -------------------------------------------------
