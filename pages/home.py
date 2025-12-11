@@ -77,50 +77,79 @@ FILES = {
 # yang di-exclude dari Top/Bottom 10
 # -------------------------------------------------
 EXCLUDED_AGGREGATES = {
-    "World",
+    # Income level
     "High income",
     "Low income",
     "Lower middle income",
     "Upper middle income",
     "Middle income",
     "Low & middle income",
+
+    # Lending group
+    "IDA & IBRD total",
+    "IDA only",
+    "IDA total",
+    "IDA blend",
+    "IBRD only",
+
+    # Region & sub-region utama World Bank
+    "World",
     "Euro area",
     "European Union",
     "OECD members",
     "Arab World",
+
     "East Asia & Pacific",
     "East Asia & Pacific (excluding high income)",
     "East Asia & Pacific (IDA & IBRD countries)",
+
     "Europe & Central Asia",
     "Europe & Central Asia (excluding high income)",
     "Europe & Central Asia (IDA & IBRD countries)",
+    "Central Europe and the Baltics",
+
     "Latin America & Caribbean",
     "Latin America & Caribbean (excluding high income)",
     "Latin America & Caribbean (IDA & IBRD countries)",
     "Latin America & the Caribbean (IDA & IBRD countries)",
+
     "Middle East & North Africa",
+    "Middle East & North Africa (excluding high income)",
     "Middle East & North Africa (IDA & IBRD countries)",
+
+    "North America",
+
     "South Asia",
+    "South Asia (IDA & IBRD)",
+
     "Sub-Saharan Africa",
     "Sub-Saharan Africa (excluding high income)",
     "Sub-Saharan Africa (IDA & IBRD countries)",
-    "IDA only",
-    "IDA total",
-    "IDA blend",
-    "IDA & IBRD total",
-    "IBRD only",
+
+    "Africa Eastern and Southern",
+    "Africa Western and Central",
+
+    # Small states & special groups
     "Small states",
     "Other small states",
+    "Caribbean small states",
+    "Pacific island small states",
+    "Not classified",
+
     "Fragile and conflict affected situations",
     "Heavily indebted poor countries (HIPC)",
     "Least developed countries: UN classification",
 
-    # kelompok demografi / kawasan lain yang bukan satu negara
-    "Post-demographic dividend",
+    # Demographic dividend groups
+    "Pre-demographic dividend",
     "Early-demographic dividend",
     "Late-demographic dividend",
-    "North America",
+    "Post-demographic dividend",
+
+    # Kelompok kawasan khusus lain
     "Middle East, North Africa, Afghanistan & Pakistan",
+}
+
 }
 
 # -------------------------------------------------
