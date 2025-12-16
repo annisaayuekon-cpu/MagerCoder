@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -13,77 +15,42 @@ st.set_page_config(
 )
 
 # =========================
-# PPI STYLE CSS
+# CSS – PPI STYLE
 # =========================
 st.markdown("""
 <style>
-html, body, [class*="css"] {
-    font-family: "Inter", "Segoe UI", sans-serif;
-}
-
-.block-container {
-    padding-top: 1.2rem;
-}
-
-.ppi-title {
-    font-size: 34px;
-    font-weight: 800;
-    color: #1f3c88;
-}
-
-.ppi-subtitle {
-    font-size: 15px;
-    color: #5a6e8c;
-    margin-bottom: 20px;
-}
-
-.filter-box {
-    background: #e9f2ff;
-    padding: 16px;
-    border-radius: 12px;
-    border: 1px solid #cfe0ff;
-    margin-bottom: 25px;
-}
-
-.kpi {
-    background: white;
-    border-radius: 14px;
-    padding: 18px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-    text-align: center;
-}
-
-.kpi h3 {
-    font-size: 14px;
-    color: #6b7280;
-}
-
-.kpi h1 {
-    font-size: 28px;
-    font-weight: 800;
-}
-
-.section-title {
-    font-size: 22px;
-    font-weight: 700;
-    color: #1f3c88;
-    margin-top: 25px;
-    margin-bottom: 10px;
-}
-
-.footnote {
-    font-size: 12px;
-    color: #6b7280;
-    margin-top: 15px;
-}
+.block-container {padding-top: 1.2rem;}
+.title {font-size:34px;font-weight:800;color:#1f3c88;}
+.subtitle {font-size:15px;color:#5a6e8c;margin-bottom:20px;}
+.filter {background:#e9f2ff;padding:16px;border-radius:12px;border:1px solid #cfe0ff;}
+.kpi {background:white;border-radius:14px;padding:18px;
+      box-shadow:0 4px 14px rgba(0,0,0,0.06);text-align:center;}
+.kpi h3 {font-size:14px;color:#6b7280;}
+.kpi h1 {font-size:26px;font-weight:800;}
+.section {font-size:22px;font-weight:700;color:#1f3c88;margin-top:28px;}
+.note {font-size:12px;color:#6b7280;margin-top:12px;}
 </style>
 """, unsafe_allow_html=True)
 
 # =========================
 # HEADER
 # =========================
-st.markdown('<div class="ppi-title">🌍 Economic Visualization Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="ppi-subtitle">Interactive dashboard using World Bank data (PPI-style)</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">🌍 Economic Visualization Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Interactive dashboard using World Bank data (PPI Style)</div>', unsafe_allow_html=True)
+
+# =========================
+# LOAD METADATA
+# =========================
+@st.cache_data
+def load_metadata():
+    meta = pd.read_csv("data/country_metadata.csv")
+    meta = meta.rename(columns={
+        "Country Name": "country",
+        "Country Code": "code"
+    })
+    return meta
+
+metadata = load_metadata()
 
 # =========================
 # INDICATOR CONFIG
@@ -104,13 +71,13 @@ INDICATORS = {
         "Exports": "4.1 Exports of goods and services.csv",
         "Imports": "4.2 Imports of goods and services.csv",
     },
-    "💼 Investasi (FDI & Kapital)": {
+    "💼 Investasi (FDI)": {
         "FDI": "5.1 Foreign Direct Investment (FDI).csv",
     },
-    "📉 Kemiskinan & Ketimpangan": {
+    "📉 Ketimpangan": {
         "Gini Index": "6.2 GINI INDEX.csv",
     },
-    "👥 Populasi & Demografi": {
+    "👥 Populasi": {
         "Total Population": "7.1 TOTAL POPULATION.csv",
     },
     "🎓 Pendidikan": {
@@ -126,15 +93,11 @@ INDICATORS = {
 }
 
 # =========================
-# LOAD & CLEAN DATA
+# LOAD INDICATOR DATA
 # =========================
 @st.cache_data
 def load_indicator(path):
-    df = pd.read_csv(
-        path,
-        sep=None,
-        engine="python"
-    )
+    df = pd.read_csv(path, sep=None, engine="python")
 
     df = df.rename(columns={
         df.columns[0]: "country",
@@ -150,94 +113,97 @@ def load_indicator(path):
     df["year"] = pd.to_numeric(df["year"], errors="coerce")
     df["value"] = pd.to_numeric(df["value"], errors="coerce")
 
-    df["type"] = df["code"].apply(lambda x: "Region" if len(str(x)) != 3 else "Country")
-    return df.dropna(subset=["year", "value"])
+    df = df.dropna(subset=["year", "value"])
+
+    # merge metadata
+    df = df.merge(metadata, on=["country", "code"], how="left")
+
+    # identify aggregate
+    df["type"] = df["code"].apply(lambda x: "Country" if len(str(x)) == 3 else "Aggregate")
+
+    return df
 
 # =========================
 # FILTER BAR
 # =========================
 with st.container():
-    st.markdown('<div class="filter-box">', unsafe_allow_html=True)
+    st.markdown('<div class="filter">', unsafe_allow_html=True)
 
     c1, c2, c3, c4 = st.columns([3,3,2,2])
 
     with c1:
-        category = st.selectbox("📂 Indicator Category", list(INDICATORS.keys()))
+        category = st.selectbox("📂 Kategori", list(INDICATORS.keys()))
 
     with c2:
-        indicator = st.selectbox("📊 Indicator", list(INDICATORS[category].keys()))
+        indicator = st.selectbox("📊 Indikator", list(INDICATORS[category].keys()))
 
     with c3:
-        year_selected = st.slider("📅 Year", 1990, 2024, 2022)
+        region = st.selectbox(
+            "🌍 Region",
+            ["All"] + sorted(metadata["Region"].dropna().unique().tolist())
+        )
 
     with c4:
-        country_filter = st.selectbox("🌍 Country", ["All"])
+        year = st.slider("📅 Tahun", 1990, 2024, 2022)
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================
-# LOAD SELECTED DATA
+# LOAD DATA
 # =========================
 file_path = os.path.join(DATA_DIR, INDICATORS[category][indicator])
 df = load_indicator(file_path)
 
-countries = sorted(df[df["type"]=="Country"]["country"].unique())
-country_filter = st.selectbox("🌍 Country", ["All"] + countries)
-
-filtered = df[df["year"] == year_selected]
-if country_filter != "All":
-    filtered = filtered[filtered["country"] == country_filter]
+if region != "All":
+    df = df[df["Region"] == region]
 
 # =========================
 # KPI
 # =========================
+latest = df[df["year"] == year]
+
 k1, k2, k3, k4 = st.columns(4)
 
-with k1:
-    st.markdown(f"<div class='kpi'><h3>Latest Value</h3><h1>{filtered['value'].mean():,.2f}</h1></div>", unsafe_allow_html=True)
-with k2:
-    st.markdown(f"<div class='kpi'><h3>Total Countries</h3><h1>{df[df.type=='Country']['country'].nunique()}</h1></div>", unsafe_allow_html=True)
-with k3:
-    st.markdown(f"<div class='kpi'><h3>Regions / Aggregates</h3><h1>{df[df.type=='Region']['country'].nunique()}</h1></div>", unsafe_allow_html=True)
-with k4:
-    st.markdown(f"<div class='kpi'><h3>Observations</h3><h1>{len(filtered)}</h1></div>", unsafe_allow_html=True)
+k1.markdown(f"<div class='kpi'><h3>Rata-rata Nilai</h3><h1>{latest['value'].mean():,.2f}</h1></div>", unsafe_allow_html=True)
+k2.markdown(f"<div class='kpi'><h3>Jumlah Negara</h3><h1>{latest[latest.type=='Country']['country'].nunique()}</h1></div>", unsafe_allow_html=True)
+k3.markdown(f"<div class='kpi'><h3>Region</h3><h1>{region}</h1></div>", unsafe_allow_html=True)
+k4.markdown(f"<div class='kpi'><h3>Observasi</h3><h1>{len(latest)}</h1></div>", unsafe_allow_html=True)
 
 # =========================
 # TIME SERIES
 # =========================
-st.markdown('<div class="section-title">📈 Time Series Trend</div>', unsafe_allow_html=True)
-
-ts = df if country_filter == "All" else df[df["country"] == country_filter]
+st.markdown('<div class="section">📈 Time Series</div>', unsafe_allow_html=True)
 
 fig_ts = px.line(
-    ts,
+    df[df["type"]=="Country"],
     x="year",
     y="value",
-    color="country" if country_filter=="All" else None,
+    color="country",
 )
 st.plotly_chart(fig_ts, use_container_width=True)
 
 # =========================
 # TOP & BOTTOM 10
 # =========================
-st.markdown('<div class="section-title">🏆 Top 10 & Bottom 10 Countries</div>', unsafe_allow_html=True)
+st.markdown('<div class="section">🏆 Top 10 & Bottom 10</div>', unsafe_allow_html=True)
 
-rank = filtered[filtered["type"]=="Country"].sort_values("value")
+rank = latest[latest["type"]=="Country"].sort_values("value")
 
 c1, c2 = st.columns(2)
-c1.dataframe(rank.tail(10)[["country","value"]])
-c2.dataframe(rank.head(10)[["country","value"]])
+c1.dataframe(rank.tail(10)[["country","value"]], use_container_width=True)
+c2.dataframe(rank.head(10)[["country","value"]], use_container_width=True)
 
 # =========================
 # BUBBLE CHART
 # =========================
-st.markdown('<div class="section-title">🔵 Country Comparison (Bubble Chart)</div>', unsafe_allow_html=True)
+st.markdown('<div class="section">🔵 Country Comparison</div>', unsafe_allow_html=True)
 
 fig_bubble = px.scatter(
     rank,
     x="value",
     y="country",
     size="value",
+    color="Region",
     hover_name="country"
 )
 st.plotly_chart(fig_bubble, use_container_width=True)
@@ -245,7 +211,7 @@ st.plotly_chart(fig_bubble, use_container_width=True)
 # =========================
 # WORLD MAP
 # =========================
-st.markdown('<div class="section-title">🗺 World Map</div>', unsafe_allow_html=True)
+st.markdown('<div class="section">🗺 World Map</div>', unsafe_allow_html=True)
 
 fig_map = px.choropleth(
     rank,
@@ -259,7 +225,7 @@ st.plotly_chart(fig_map, use_container_width=True)
 # FOOTNOTE
 # =========================
 st.markdown("""
-<div class="footnote">
-⚠️ Data source: World Bank Open Data. Values include country and aggregate series.
+<div class="note">
+Data Source: World Bank Open Data • Includes country & aggregate series
 </div>
 """, unsafe_allow_html=True)
