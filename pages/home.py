@@ -1,215 +1,188 @@
-# =========================================================
-# PPI-STYLE ECONOMIC DASHBOARD (WORLD BANK DATA)
-# FINAL VERSION — ANTI PARSER ERROR
-# =========================================================
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+
 from region_mapping import get_region
 
-# =========================================================
+# =====================================================
 # PAGE CONFIG
-# =========================================================
+# =====================================================
 st.set_page_config(
-    page_title="Economic Visualization Dashboard",
-    page_icon="🌍",
+    page_title="Dashboard Ekonomi – Ringkasan",
     layout="wide"
 )
 
-# =========================================================
-# SAFE CSV LOADER (ANTI ERROR)
-# =========================================================
-def load_csv_safe(path):
-    try:
-        return pd.read_csv(path, sep=";", engine="python")
-    except:
-        try:
-            return pd.read_csv(path, sep=",", engine="python")
-        except:
-            try:
-                return pd.read_csv(path, sep="\t", engine="python")
-            except:
-                return pd.read_csv(path, engine="python", on_bad_lines="skip")
-
-# =========================================================
-# DATA CONFIG
-# =========================================================
+# =====================================================
+# PATH & DATA LOADER
+# =====================================================
 DATA_DIR = "data"
 
-INDICATORS = {
-    "GDP Growth (%)": "1.3 GDP growth (%).csv",
-    "Unemployment Rate": "2.2 Unemployment rate.csv",
-    "Inflation (CPI)": "3.1 Inflation, consumer prices (%).csv",
-    "Exports": "4.1 Exports of goods and services.csv",
-    "Imports": "4.2 Imports of goods and services.csv",
-    "FDI": "5.1 Foreign Direct Investment (FDI).csv",
-    "Gini Index": "6.2 GINI INDEX.csv",
-    "Total Population": "7.1 TOTAL POPULATION.csv",
-    "School Enrollment": "8.1 SCHOOL ENROLLMENT.csv",
-    "Health Expenditure": "9.1 HEALTH EXPENDITURE.csv",
-    "CO2 Emissions": "10.1 CO EMISSIONS.csv",
-    "Electricity Access": "10.4 ELECTRICITY ACCESS.csv",
-}
-
-# =========================================================
-# LOAD & CLEAN DATA
-# =========================================================
 @st.cache_data
-def load_all_data():
-    data = {}
-    for label, file in INDICATORS.items():
-        path = os.path.join(DATA_DIR, file)
-        if os.path.exists(path):
-            df = load_csv_safe(path)
+def load_csv(filename: str) -> pd.DataFrame:
+    path = os.path.join(DATA_DIR, filename)
+    df = pd.read_csv(path)
+    return df
 
-            # pastikan kolom utama ada
-            if "Country Name" not in df.columns:
-                continue
+# =====================================================
+# HEADER
+# =====================================================
+st.title("📊 Dashboard Ekonomi Indonesia & Global")
+st.caption("Ringkasan indikator utama – gaya World Bank / PPI")
 
-            # reshape wide → long
-            year_cols = [c for c in df.columns if c.isdigit()]
-            df_long = df.melt(
-                id_vars=["Country Name", "Country Code"],
-                value_vars=year_cols,
-                var_name="Year",
-                value_name="Value"
-            )
+# =====================================================
+# SIDEBAR FILTER
+# =====================================================
+st.sidebar.header("Filter Data")
 
-            df_long["Year"] = df_long["Year"].astype(int)
-            df_long["Value"] = pd.to_numeric(df_long["Value"], errors="coerce")
-            df_long["Region"] = df_long["Country Name"].apply(get_region)
-
-            # drop agregat global
-            df_long = df_long.dropna(subset=["Region"])
-
-            data[label] = df_long
-
-    return data
-
-DATA = load_all_data()
-
-# =========================================================
-# SIDEBAR
-# =========================================================
-st.sidebar.title("📊 Dashboard Ekonomi")
+indicator_files = sorted([
+    f for f in os.listdir(DATA_DIR) if f.endswith(".csv")
+])
 
 indicator = st.sidebar.selectbox(
-    "Pilih Indikator",
-    list(DATA.keys())
+    "Indikator",
+    indicator_files,
+    index=0
 )
 
-country = st.sidebar.text_input("Cari Negara (opsional)")
+df = load_csv(indicator)
 
-region = st.sidebar.selectbox(
-    "Region",
-    ["Global"] + sorted(DATA[indicator]["Region"].unique())
+# Pastikan kolom standar ada
+required_cols = {"Country", "Country Code", "Year", "Value"}
+if not required_cols.issubset(df.columns):
+    st.error(
+        f"Struktur CSV tidak sesuai. "
+        f"Kolom wajib: {required_cols}"
+    )
+    st.stop()
+
+countries = sorted(df["Country"].dropna().unique())
+
+selected_countries = st.sidebar.multiselect(
+    "Negara",
+    countries,
+    default=countries[:5]
 )
 
-year = st.sidebar.slider(
-    "Tahun",
-    int(DATA[indicator]["Year"].min()),
-    int(DATA[indicator]["Year"].max()),
-    int(DATA[indicator]["Year"].max())
+year_min = int(df["Year"].min())
+year_max = int(df["Year"].max())
+
+year_range = st.sidebar.slider(
+    "Rentang Tahun",
+    min_value=year_min,
+    max_value=year_max,
+    value=(year_min, year_max)
 )
 
-# =========================================================
+# =====================================================
 # FILTER DATA
-# =========================================================
-df = DATA[indicator].copy()
+# =====================================================
+df_filtered = df[
+    (df["Country"].isin(selected_countries)) &
+    (df["Year"].between(year_range[0], year_range[1]))
+].copy()
 
-if region != "Global":
-    df = df[df["Region"] == region]
+df_filtered["Region"] = df_filtered["Country"].apply(get_region)
 
-if country:
-    df = df[df["Country Name"].str.contains(country, case=False)]
+# =====================================================
+# MAIN METRICS
+# =====================================================
+st.subheader(indicator.replace(".csv", ""))
 
-df_year = df[df["Year"] == year]
+latest_year = df_filtered["Year"].max()
+df_latest = df_filtered[df_filtered["Year"] == latest_year]
 
-# =========================================================
-# HEADER
-# =========================================================
-st.title("🌍 Economic Visualization Dashboard")
-st.caption("Interactive dashboard using World Bank data (PPI-style)")
+col1, col2, col3 = st.columns(3)
 
-# =========================================================
-# KPI CARDS
-# =========================================================
-col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric(
+        "Tahun Terakhir",
+        latest_year
+    )
 
-col1.metric(
-    "Latest Value (Region / Global)",
-    f"{df_year['Value'].mean():,.2f}"
-)
+with col2:
+    st.metric(
+        "Jumlah Negara",
+        df_latest["Country"].nunique()
+    )
 
-col2.metric(
-    "Country Selected",
-    country if country else "No Country Selected"
-)
+with col3:
+    st.metric(
+        "Rata-rata Nilai",
+        round(df_latest["Value"].mean(), 2)
+    )
 
-col3.metric(
-    "Total Countries",
-    df_year["Country Name"].nunique()
-)
+# =====================================================
+# LINE CHART (TIME SERIES)
+# =====================================================
+st.markdown("### 📈 Tren Waktu")
 
-col4.metric(
-    "Dataset Rows",
-    len(df)
-)
-
-st.divider()
-
-# =========================================================
-# TIME SERIES
-# =========================================================
-st.subheader("📈 Time Series Trend")
-
-fig_ts = px.line(
-    df if not country else df[df["Country Name"] == country],
+fig_line = px.line(
+    df_filtered,
     x="Year",
     y="Value",
-    color="Country Name" if not country else None,
-    title=f"Trend of {indicator}"
+    color="Country",
+    markers=True
 )
 
-st.plotly_chart(fig_ts, use_container_width=True)
-
-# =========================================================
-# BUBBLE CHART
-# =========================================================
-st.subheader("🔵 Country Comparison (Bubble Chart)")
-
-fig_bubble = px.scatter(
-    df_year,
-    x="Value",
-    y="Country Name",
-    size="Value",
-    color="Region",
-    title=f"{indicator} by Country ({year})",
-    height=600
+fig_line.update_layout(
+    height=450,
+    legend_title_text="Negara"
 )
 
-st.plotly_chart(fig_bubble, use_container_width=True)
+st.plotly_chart(fig_line, use_container_width=True)
 
-# =========================================================
-# MAP
-# =========================================================
-st.subheader("🗺 Global Map")
+# =====================================================
+# MAP (WORLD BANK STYLE)
+# =====================================================
+st.markdown("### 🗺️ Peta Global (Tahun Terakhir)")
 
 fig_map = px.choropleth(
-    df_year,
-    locations="Country Name",
-    locationmode="country names",
+    df_latest,
+    locations="Country Code",
     color="Value",
-    hover_name="Country Name",
-    title=f"{indicator} ({year})"
+    hover_name="Country",
+    color_continuous_scale="Blues"
+)
+
+fig_map.update_layout(
+    height=500,
+    margin=dict(l=0, r=0, t=30, b=0)
 )
 
 st.plotly_chart(fig_map, use_container_width=True)
 
-# =========================================================
+# =====================================================
+# REGION SUMMARY
+# =====================================================
+st.markdown("### 🌍 Ringkasan per Region")
+
+region_summary = (
+    df_latest
+    .groupby("Region", as_index=False)["Value"]
+    .mean()
+    .sort_values("Value", ascending=False)
+)
+
+fig_bar = px.bar(
+    region_summary,
+    x="Region",
+    y="Value",
+    color="Region"
+)
+
+fig_bar.update_layout(
+    showlegend=False,
+    height=400
+)
+
+st.plotly_chart(fig_bar, use_container_width=True)
+
+# =====================================================
 # DATA TABLE
-# =========================================================
-with st.expander("📄 Lihat Data Tabel"):
-    st.dataframe(df_year.sort_values("Value", ascending=False))
+# =====================================================
+with st.expander("📄 Tampilkan Data"):
+    st.dataframe(
+        df_filtered.sort_values(["Country", "Year"]),
+        use_container_width=True
+    )
