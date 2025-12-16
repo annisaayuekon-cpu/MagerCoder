@@ -93,61 +93,84 @@ FILES_STRUCTURE = {
 
 @st.cache_data
 def load_and_clean_data(filename):
-    """
-    Fungsi Pintar:
-    1. Deteksi Delimiter (; atau ,)
-    2. Deteksi Format Data (Long/Sudah Rapi vs Wide/Perlu Melt)
-    """
     filepath = os.path.join(DATA_FOLDER, filename)
     if not os.path.exists(filepath): return None
     
-    try:
-        # A. DETEKSI DELIMITER
-        df = pd.read_csv(filepath, sep=';')
-        if df.shape[1] < 2: 
-            df = pd.read_csv(filepath, sep=',')
-
-        # Bersihkan nama kolom
-        df.columns = df.columns.str.strip()
-
-        # B. DETEKSI FORMAT DATA
+    # --- LOGIKA BARU: AUTO-DETECT HEADER & DELIMITER ---
+    # Kita akan mencoba membaca file dengan berbagai kemungkinan baris header (0, 1, 2, atau 3)
+    # dan berbagai delimiter (; atau ,) sampai menemukan kombinasi yang benar.
+    
+    found_df = None
+    
+    # Coba berbagai kombinasi
+    for header_idx in [0, 1, 2, 3]: # Cek baris 1 sampai 4
+        for sep in [';', ',']:
+            try:
+                # Baca calon dataframe
+                temp_df = pd.read_csv(filepath, sep=sep, header=header_idx)
+                
+                # Bersihkan nama kolom
+                temp_df.columns = temp_df.columns.astype(str).str.strip()
+                
+                # KRITERIA SUKSES: 
+                # Harus ada kolom 'Country Name' (atau mirip) DAN ada setidaknya satu kolom Tahun (angka 4 digit)
+                has_country = any(col.lower() in ['country name', 'country', 'economy'] for col in temp_df.columns)
+                has_year_col = any(col.isdigit() and len(col) == 4 for col in temp_df.columns)
+                has_year_val = 'Year' in temp_df.columns # Kasus jika file sudah format Long
+                
+                if has_country and (has_year_col or has_year_val):
+                    found_df = temp_df
+                    break # Ketemu! Berhenti mencari
+            except:
+                continue
+        if found_df is not None:
+            break
+            
+    if found_df is None:
+        st.error(f"Gagal membaca format file {filename}. Pastikan ada kolom 'Country Name' dan Tahun.")
+        return None
         
-        # KASUS 1: DATA SUDAH RAPI (FORMAT LONG) - Contoh: CO2 EMISSIONS.csv
-        # Ciri: Ada kolom bernama 'Year'
+    df = found_df
+    
+    # --- PROSES CLEANING (SAMA SEPERTI SEBELUMNYA) ---
+    try:
+        # KASUS 1: DATA SUDAH RAPI (Ada kolom 'Year') - Contoh: CO2
         if 'Year' in df.columns:
-            # Kita perlu standarisasi kolom nilai menjadi 'Value'
-            # Cari kolom yang BUKAN metadata (Country Name, Code, Year)
             metadata_cols = ['Country Name', 'Country Code', 'Year', 'Unnamed: 0']
             value_cols = [c for c in df.columns if c not in metadata_cols]
             
             if value_cols:
-                # Ambil kolom nilai pertama yg ditemukan (misal: 'CO2 emissions (per capita)')
-                # dan rename jadi 'Value' agar kode visualisasi di bawah tidak error
                 df = df.rename(columns={value_cols[0]: 'Value'})
             
-            # Pastikan tipe data benar
             df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
             df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
             return df.dropna(subset=['Value'])
 
-        # KASUS 2: DATA MELEBAR (FORMAT WIDE) - Contoh: GDP.csv
-        # Ciri: Tahun menjadi nama kolom (1990, 1991, ...)
+        # KASUS 2: DATA MELEBAR (Perlu di-MELT) - Contoh: GDP, Labor
         else:
+            # Standarisasi nama kolom negara
+            # Cari kolom yang mengandung 'Country Name' dan rename jadi standar
+            for c in df.columns:
+                if 'country name' in c.lower():
+                    df = df.rename(columns={c: 'Country Name'})
+                    break
+            
             year_cols = [c for c in df.columns if c.isdigit() and len(c) == 4]
             if not year_cols:
-                # Jika tidak ketemu format apapun
-                st.error(f"Format kolom pada file {filename} tidak dikenali.")
                 return None
             
             id_vars = [c for c in df.columns if c not in year_cols]
+            
+            # Melt
             df_melted = df.melt(id_vars=id_vars, value_vars=year_cols, var_name='Year', value_name='Value')
             
             df_melted['Year'] = pd.to_numeric(df_melted['Year'], errors='coerce')
             df_melted['Value'] = pd.to_numeric(df_melted['Value'], errors='coerce')
+            
             return df_melted.dropna(subset=['Value'])
 
     except Exception as e:
-        st.error(f"Error reading file {filename}: {e}")
+        st.error(f"Error processing {filename}: {e}")
         return None
 
 # --- 4. HEADER & NAVIGASI ---
