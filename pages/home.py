@@ -9,88 +9,106 @@ st.set_page_config(
     page_icon="📊",
 )
 
-# =======================
+# ================================
+# 🔧 ROBUST CSV LOADER (ANTI ERROR)
+# ================================
+def robust_csv_loader(path):
+    """
+    Loader tahan banting untuk dataset World Bank:
+    - mencoba delimiter: , ; tab
+    - melewati baris rusak
+    - fallback default
+    """
+    if not os.path.exists(path):
+        return pd.DataFrame()
+
+    for sep in [",", ";", "\t"]:
+        try:
+            df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
+            if df.shape[1] > 1:     # valid CSV
+                return df
+        except Exception:
+            continue
+
+    try:
+        return pd.read_csv(path, engine="python", on_bad_lines="skip")
+    except:
+        return pd.DataFrame()
+
+
+# ================================
 # CUSTOM CSS
-# =======================
+# ================================
 st.markdown("""
 <style>
-
-/* Header */
 .big-title {
-    font-size: 42px;
-    font-weight: 900;
-    color: #1d3557;
+    font-size: 42px; font-weight: 900; color: #1d3557;
 }
 .subtitle {
-    font-size: 17px;
-    color: #457b9d;
+    font-size: 17px; color: #457b9d;
 }
-
-/* Filter bar */
 .filter-bar {
-    background: #e8f1fb;
-    padding: 15px;
-    border-radius: 10px;
+    background: #e8f1fb; padding: 15px; border-radius: 10px;
     border: 1px solid #c8d9ef;
 }
-
-/* KPI Cards */
 .kpi-card {
-    padding: 18px;
-    border-radius: 10px;
-    color: white;
-    font-weight:600;
-    text-align:center;
+    padding: 18px; border-radius: 10px; color: white;
+    font-weight:600; text-align:center;
 }
-.kpi-number {
-    font-size: 30px;
-    font-weight: 900;
-}
-
+.kpi-number { font-size: 30px; font-weight: 900; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# =======================
-# LOAD DATA (contoh generik)
-# =======================
+# ================================
+# LOAD DATA (Now using robust loader)
+# ================================
 DATA_DIR = "data"
 
-gdp = pd.read_csv(os.path.join(DATA_DIR, "1.1. GDP (CURRENT US$).csv"))
-investment = pd.read_csv(os.path.join(DATA_DIR, "5.1 Foreign Direct Investment (FDI).csv"))
-inflation = pd.read_csv(os.path.join(DATA_DIR, "3.1 Inflation, consumer prices (%).csv"))
+gdp = robust_csv_loader(os.path.join(DATA_DIR, "1.1. GDP (CURRENT US$).csv"))
+investment = robust_csv_loader(os.path.join(DATA_DIR, "5.1 Foreign Direct Investment (FDI).csv"))
+inflation = robust_csv_loader(os.path.join(DATA_DIR, "3.1 Inflation, consumer prices (%).csv"))
 
-# =======================
-# HEADER SECTION
-# =======================
+# fallback if empty
+if gdp.empty:
+    st.error("⚠ File GDP tidak bisa dibaca. Periksa apakah file ada & format CSV benar.")
+if investment.empty:
+    st.warning("⚠ File FDI tidak terbaca, digunakan data dummy untuk sementara.")
+if inflation.empty:
+    st.warning("⚠ File Inflasi tidak terbaca, digunakan data dummy sementara.")
+
+
+# ================================
+# HEADER
+# ================================
 st.markdown("<div class='big-title'>🌍 Economic Visualization Dashboard</div>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Interactive dashboard to explore macroeconomic indicators across countries, sectors, and time.</div><br>", unsafe_allow_html=True)
 
-# =======================
+
+# ================================
 # FILTER BAR
-# =======================
-with st.container():
-    st.markdown("<div class='filter-bar'>", unsafe_allow_html=True)
-    colA, colB, colC, colD = st.columns([3,2,2,2])
+# ================================
+st.markdown("<div class='filter-bar'>", unsafe_allow_html=True)
+colA, colB, colC, colD = st.columns([3,2,2,2])
 
-    with colA:
-        search_country = st.text_input("🔍 Search country or region")
+with colA:
+    search_country = st.text_input("🔍 Search country or region")
 
-    with colB:
-        indicator = st.selectbox("📊 Indicator", ["GDP", "FDI", "Inflation"])
+with colB:
+    indicator = st.selectbox("📊 Indicator", ["GDP", "FDI", "Inflation"])
 
-    with colC:
-        year = st.slider("📅 Year", 1990, 2024, 2020)
+with colC:
+    year = st.slider("📅 Year", 1990, 2024, 2020)
 
-    with colD:
-        st.button("Reset Filters")
+with colD:
+    st.button("Reset Filters")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 
-# =======================
+# ================================
 # KPI CARDS
-# =======================
+# ================================
 col1, col2, col3, col4 = st.columns(4)
 
 col1.markdown("<div class='kpi-card' style='background:#1d3557;'>"
@@ -109,11 +127,10 @@ col4.markdown("<div class='kpi-card' style='background:#f4a261;'>"
               "<div>Projects from LICs</div>"
               "<div class='kpi-number'>3.86%</div></div>", unsafe_allow_html=True)
 
-st.write("")
 
-# =======================
-# TIMESERIES CHART
-# =======================
+# ================================
+# TIME SERIES
+# ================================
 st.subheader("📈 Time Series Trend")
 
 ts_col1, ts_col2 = st.columns([3,1])
@@ -121,7 +138,7 @@ ts_col1, ts_col2 = st.columns([3,1])
 with ts_col2:
     chart_type = st.radio("Chart Type", ["Line", "Bubble"])
 
-# dummy timeseries
+# dummy fallback data
 time_df = pd.DataFrame({
     "year": list(range(1990, 2024)),
     "GDP": [i*5 + (i%7)*10 for i in range(34)],
@@ -135,9 +152,10 @@ else:
 
 st.plotly_chart(fig, use_container_width=True)
 
-# =======================
-# BUBBLE CHART BY SECTOR
-# =======================
+
+# ================================
+# BUBBLE CHART
+# ================================
 st.subheader("🔵 Sector Comparison Bubble Chart")
 
 sector_df = pd.DataFrame({
@@ -157,9 +175,10 @@ fig_bubble = px.scatter(
 )
 st.plotly_chart(fig_bubble, use_container_width=True)
 
-# =======================
-# WORLD MAP
-# =======================
+
+# ================================
+# MAP
+# ================================
 st.subheader("🗺 Interactive Map")
 
 map_df = pd.DataFrame({
