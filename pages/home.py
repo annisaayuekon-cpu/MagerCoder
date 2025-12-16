@@ -3,310 +3,235 @@ import pandas as pd
 import plotly.express as px
 import os
 
-# ==========================
-# PAGE CONFIG
-# ==========================
+
+# ======================================================
+# STREAMLIT PAGE CONFIG
+# ======================================================
 st.set_page_config(
-    page_title="Economic Dashboard",
-    layout="wide",
-    page_icon="📊",
+    page_title="Economic Visualization Dashboard",
+    page_icon="🌍",
+    layout="wide"
 )
 
-# ==========================
-# CUSTOM CSS
-# ==========================
-st.markdown("""
-<style>
-.big-title { font-size: 42px; font-weight: 900; color: #1d3557; }
-.subtitle { font-size: 17px; color: #457b9d; }
-.filter-bar { background: #e8f1fb; padding: 15px; border-radius: 10px; border: 1px solid #c8d9ef; }
-.kpi-card { padding: 18px; border-radius: 10px; color: white; font-weight: 600; text-align:center; }
-.kpi-number { font-size: 30px; font-weight: 900; }
-</style>
-""", unsafe_allow_html=True)
 
-DATA_DIR = "data"
+# ======================================================
+# SIMPLE REGION MAPPING (tanpa file lain)
+# ======================================================
+def get_region(country):
+    country = str(country)
 
-# ==========================================
-# UNIVERSAL DATA ENGINE
-# ==========================================
-def robust_csv_loader(path):
-    """Smart CSV loader: automatically detects delimiters."""
-    for sep in [",", ";", "\t"]:
-        try:
-            df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
-            if df.shape[1] > 3:
-                return df
-        except:
-            pass
-    return pd.DataFrame()
+    if country in [
+        "Indonesia", "Malaysia", "Thailand", "Vietnam", "China", "Japan", "Korea, Rep.",
+        "Philippines", "Singapore", "Myanmar", "Lao PDR", "Cambodia", "Mongolia"
+    ]:
+        return "East Asia & Pacific"
 
-def convert_wide_to_long(df):
-    """Convert wide-format World Bank data to long format."""
-    if df.empty:
-        return df
+    if country in [
+        "United States", "Canada"
+    ]:
+        return "North America"
 
-    df.columns = df.columns.str.strip()
+    if country in [
+        "Germany", "France", "United Kingdom", "Italy", "Spain", "Netherlands",
+        "Belgium", "Norway", "Sweden", "Finland", "Turkey", "Poland", "Portugal",
+        "Greece", "Austria", "Ireland"
+    ]:
+        return "Europe & Central Asia"
 
-    # column detection
-    country_col = "Country Name" if "Country Name" in df.columns else df.columns[0]
-    code_col = "Country Code" if "Country Code" in df.columns else df.columns[1]
+    if country in [
+        "Brazil", "Argentina", "Chile", "Colombia", "Peru", "Mexico"
+    ]:
+        return "Latin America & Caribbean"
 
-    year_cols = [c for c in df.columns if str(c).isdigit()]
+    if country in [
+        "India", "Pakistan", "Bangladesh", "Sri Lanka", "Nepal"
+    ]:
+        return "South Asia"
 
-    long_df = df.melt(
-        id_vars=[country_col, code_col],
-        value_vars=year_cols,
-        var_name="year",
-        value_name="value",
-    )
+    if country in [
+        "Saudi Arabia", "United Arab Emirates", "Qatar", "Bahrain", "Iran", "Iraq",
+        "Kuwait", "Jordan", "Morocco", "Tunisia", "Algeria", "Egypt"
+    ]:
+        return "Middle East & North Africa"
 
-    long_df["year"] = pd.to_numeric(long_df["year"], errors="ignore")
-    long_df["value"] = pd.to_numeric(long_df["value"], errors="coerce")
-    long_df = long_df.dropna(subset=["value"])
-
-    return long_df.rename(columns={country_col: "country", code_col: "code"})
-
-
-# ==========================================
-# REGION MAPPING (WORLD BANK STANDARD)
-# ==========================================
-REGION_MAP = {
-    "East Asia & Pacific": ["CHN","IDN","MYS","SGP","THA","VNM","PHL","KHM","LAO","BRN","MMR","MNG","TLS"],
-    "Europe & Central Asia": ["GBR","FRA","DEU","ITA","ESP","NLD","SWE","NOR","FIN","POL","ROU","RUS","UKR","TUR"],
-    "Latin America & Caribbean": ["BRA","ARG","CHL","COL","PER","MEX","ECU","URY","PRY","PAN","BOL"],
-    "Middle East & North Africa": ["SAU","ARE","QAT","EGY","MAR","DZA","TUN","ISR","JOR","KWT","BHR","OMN","LBY"],
-    "North America": ["USA","CAN"],
-    "South Asia": ["IND","PAK","BGD","LKA","NPL","BTN","MDV"],
-    "Sub-Saharan Africa": ["NGA","ETH","KEN","UGA","GHA","TZA","ZAF","SEN","AGO","CMR","ZMB","ZWE","RWA","MOZ"],
-}
-
-ALL_REGIONS = ["Global"] + list(REGION_MAP.keys())
-
-
-# ==========================================
-# AUTO LOAD ALL DATA FILES
-# ==========================================
-files = [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")]
-indicator_list = [f.replace(".csv", "") for f in files]
-indicator_map = {f.replace(".csv",""): os.path.join(DATA_DIR, f) for f in files}
-
-
-# ==========================================
-# HEADER
-# ==========================================
-st.markdown("<div class='big-title'>🌍 Economic Visualization Dashboard</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Interactive dashboard using real World Bank data</div><br>",
-            unsafe_allow_html=True)
-
-
-# ==========================================
-# FILTER BAR
-# ==========================================
-st.markdown("<div class='filter-bar'>", unsafe_allow_html=True)
-
-colA, colB, colC, colD = st.columns([3,2,2,2])
-
-with colA:
-    search_country = st.text_input("🔍 Search Country (optional)")
-
-with colB:
-    selected_indicator = st.selectbox("📊 Select Indicator", indicator_list)
-
-with colC:
-    region_filter = st.selectbox("🌍 Region", ALL_REGIONS)
-
-with colD:
-    selected_year = st.slider("📅 Year", 1990, 2024, 2020)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# ==========================================
-# LOAD SELECTED DATA
-# ==========================================
-df_raw = robust_csv_loader(indicator_map[selected_indicator])
-df_long = convert_wide_to_long(df_raw)
-
-# ==========================================
-# APPLY REGION FILTER
-# ==========================================
-if region_filter != "Global":
-    valid_codes = REGION_MAP[region_filter]
-    df_long = df_long[df_long["code"].isin(valid_codes)]
-
-# ==========================================
-# APPLY COUNTRY SEARCH FILTER
-# ==========================================
-if search_country:
-    df_long = df_long[df_long["country"].str.contains(search_country, case=False)]
-
-# Avoid empty data
-if df_long.empty:
-    st.error("❗ No data available for this filter combination.")
-    st.stop()
-
-
-# ==========================================
-# KPI CARDS
-# ==========================================
-col1, col2, col3, col4 = st.columns(4)
-
-latest_year = df_long["year"].max()
-latest_global = df_long[df_long["year"] == latest_year]["value"].mean()
-
-col1.markdown(f"""
-<div class='kpi-card' style='background:#1d3557;'>
-    <div>Latest Value (Region/Global)</div>
-    <div class='kpi-number'>{latest_global:,.2f}</div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# KPI: If country searched
-if search_country:
-    df_country_only = df_long[df_long["country"].str.contains(search_country, case=False)]
-    if not df_country_only.empty:
-        latest_country = df_country_only.sort_values("year").iloc[-1]["value"]
-        col2.markdown(f"""
-        <div class='kpi-card' style='background:#2a9d8f;'>
-            <div>{search_country}</div>
-            <div class='kpi-number'>{latest_country:,.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        col2.markdown("<div class='kpi-card' style='background:#2a9d8f;'>No Country Data</div>",
-                      unsafe_allow_html=True)
-else:
-    col2.markdown("<div class='kpi-card' style='background:#2a9d8f;'>No Country Selected</div>",
-                  unsafe_allow_html=True)
-
-col3.markdown(f"""
-<div class='kpi-card' style='background:#e76f51;'>
-    <div>Total Countries</div>
-    <div class='kpi-number'>{df_long['country'].nunique()}</div>
-</div>
-""", unsafe_allow_html=True)
-
-col4.markdown(f"""
-<div class='kpi-card' style='background:#f4a261;'>
-    <div>Dataset Rows</div>
-    <div class='kpi-number'>{len(df_long):,}</div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ==========================================
-# TIME SERIES CHART
-# ==========================================
-st.subheader("📈 Time Series Trend")
-
-fig_ts = px.line(
-    df_long,
-    x="year",
-    y="value",
-    color="country",
-    title=f"Trend of {selected_indicator}",
-)
-st.plotly_chart(fig_ts, use_container_width=True)
-
-
-# ==========================================
-# BUBBLE CHART (Top 20 countries)
-# ==========================================
-st.subheader("🔵 Country Comparison (Bubble Chart)")
-
-df_year = df_long[df_long["year"] == selected_year].nlargest(20, "value")
-
-fig_bubble = px.scatter(
-    df_year,
-    x="value",
-    y="country",
-    size="value",
-    hover_name="country",
-    title=f"Top Countries ({selected_year}) – {selected_indicator}"
-)
-st.plotly_chart(fig_bubble, use_container_width=True)
-
-
-# ==========================================
-# WORLD MAP
-# ==========================================
-st.subheader("🗺 World Map")
-
-fig_map = px.choropleth(
-    df_year,
-    locations="country",
-    locationmode="country names",
-    color="value",
-    title=f"Global/Regional Distribution ({selected_year})",
-)
-st.plotly_chart(fig_map, use_container_width=True)
-
-# ==========================================
-# DONUT CHART SECTION
-# ==========================================
-st.subheader("🍩 Indicator Category Breakdown")
-
-df_latest = df_long[df_long["year"] == selected_year]
-
-# ---------------------
-# CATEGORY DEFINITIONS
-# ---------------------
-def categorize_indicator(value, indicator):
-
-    if indicator.startswith("1.1"):  # GDP
-        if value < 5e10: return "Low GDP"
-        elif value < 5e11: return "Middle GDP"
-        elif value < 1e12: return "High GDP"
-        else: return "Very High GDP"
-
-    if indicator.startswith("1.2"):  # GDP per capita
-        if value < 1000: return "Low Income"
-        elif value < 4000: return "Lower Middle"
-        elif value < 12000: return "Upper Middle"
-        else: return "High Income"
-
-    if indicator.startswith("1.3"):  # GDP growth %
-        if value < 0: return "Negative"
-        elif value < 3: return "Low"
-        elif value < 6: return "Moderate"
-        else: return "High"
-
-    if indicator.startswith("3.1"):  # Inflation
-        if value > 50: return "Hyperinflation"
-        elif value > 10: return "High"
-        elif value > 3: return "Moderate"
-        else: return "Stable"
-
-    if indicator.startswith("2.2"):  # Unemployment
-        if value < 5: return "Low"
-        elif value < 10: return "Medium"
-        elif value < 15: return "High"
-        else: return "Very High"
-
-    if indicator.startswith("5.1"):  # FDI
-        if value < 1e9: return "Very Low"
-        elif value < 5e9: return "Low"
-        elif value < 2e10: return "Medium"
-        else: return "High"
+    if country in [
+        "Nigeria", "Kenya", "Ghana", "Ethiopia", "Tanzania", "Uganda",
+        "South Africa", "Senegal", "Rwanda", "Zimbabwe"
+    ]:
+        return "Sub-Saharan Africa"
 
     return "Other"
 
 
-# Apply categorization
-df_latest["category"] = df_latest["value"].apply(lambda x: categorize_indicator(x, selected_indicator))
+# ======================================================
+# LOAD INDICATORS
+# ======================================================
+DATA_DIR = "data"
 
-# Create donut chart
-donut_df = df_latest.groupby("category")["value"].count().reset_index().rename(columns={"value": "count"})
+INDICATOR_FILES = {
+    # GDP & Economy
+    "GDP (Current US$)": "1.1. GDP (CURRENT US$).csv",
+    "GDP per Capita": "1.2. GDP PER CAPITA.csv",
+    "GDP Growth (%)": "1.3 GDP growth (%).csv",
 
-fig_donut = px.pie(
-    donut_df,
-    names="category",
-    values="count",
-    hole=0.5,
-    title=f"{selected_indicator} — Category Breakdown ({selected_year})",
+    # Labor
+    "Unemployment Rate": "2.2 Unemployment rate.csv",
+    "Youth Unemployment": "2.3 Youth unemployment.csv",
+
+    # Inflation
+    "Inflation (Consumer Prices)": "3.1 Inflation, consumer prices (%).csv",
+
+    # Trade
+    "Exports of Goods & Services": "4.1 Exports of goods and services.csv",
+    "Imports of Goods & Services": "4.2 Imports of goods and services.csv",
+    "Trade Openness": "4.4 Trade openness.csv",
+
+    # Investment
+    "Foreign Direct Investment (FDI)": "5.1 Foreign Direct Investment (FDI).csv",
+
+    # Inequality
+    "GINI Index": "6.2. GINI INDEX.csv",
+
+    # Population
+    "Total Population": "7.1. TOTAL POPULATION.csv",
+
+    # Education
+    "School Enrollment": "8.1. SCHOOL ENROLLMENT.csv",
+
+    # Health
+    "Health Expenditure": "9.1. HEALTH EXPENDITURE.csv",
+
+    # Environment
+    "CO2 Emissions": "10.1. CO EMISSIONS.csv",
+    "Electricity Access": "10.4. ELECTRICITY ACCESS.csv",
+}
+
+datasets = {}
+
+for label, file in INDICATOR_FILES.items():
+    path = os.path.join(DATA_DIR, file)
+    if os.path.exists(path):
+        df = pd.read_csv(path)
+        df["Region"] = df["Country Name"].apply(get_region)
+        datasets[label] = df
+
+
+# ======================================================
+# HEADER
+# ======================================================
+st.markdown("""
+<h1 style='color:#1d3557; font-weight:900;'>🌍 Economic Visualization Dashboard</h1>
+<p style='color:#457b9d; font-size:18px;'>
+Interactive dashboard using World Bank indicators.
+</p>
+""", unsafe_allow_html=True)
+
+
+# ======================================================
+# FILTER BAR
+# ======================================================
+st.markdown("### 🔍 Filters")
+
+colA, colB, colC, colD = st.columns([3, 3, 2, 2])
+
+with colA:
+    search_country = st.text_input("Search Country (optional)")
+
+with colB:
+    selected_indicator = st.selectbox("Select Indicator", list(INDICATOR_FILES.keys()))
+
+with colC:
+    selected_region = st.selectbox(
+        "Region",
+        ["Global",
+         "East Asia & Pacific",
+         "Europe & Central Asia",
+         "Latin America & Caribbean",
+         "Middle East & North Africa",
+         "South Asia",
+         "Sub-Saharan Africa",
+         "North America"]
+    )
+
+with colD:
+    year = st.slider("Year", 1990, 2024, 2020)
+
+
+# ======================================================
+# PROCESS DATA
+# ======================================================
+df = datasets[selected_indicator].copy()
+
+# Region filter
+if selected_region != "Global":
+    df = df[df["Region"] == selected_region]
+
+# Country search filter
+if search_country:
+    df = df[df["Country Name"].str.contains(search_country, case=False)]
+
+# Reshape to long format
+melt_df = df.melt(id_vars=["Country Name", "Country Code", "Region"],
+                  var_name="year", value_name="value")
+
+melt_df["year"] = pd.to_numeric(melt_df["year"], errors="coerce")
+melt_df = melt_df.dropna()
+
+
+# ======================================================
+# KPI SECTION
+# ======================================================
+st.markdown("### 📊 Key Metrics")
+
+col1, col2, col3 = st.columns(3)
+
+latest_value = melt_df[melt_df["year"] == year]["value"].sum()
+
+col1.metric("Latest Value", f"{latest_value:,.2f}")
+col2.metric("Total Countries", df["Country Name"].nunique())
+col3.metric("Dataset Rows", len(melt_df))
+
+
+# ======================================================
+# TIME SERIES CHART
+# ======================================================
+st.markdown("### 📈 Time Series Trend")
+
+fig = px.line(
+    melt_df,
+    x="year",
+    y="value",
+    color="Country Name",
+    title=f"Trend of {selected_indicator}",
+    height=500
 )
 
-st.plotly_chart(fig_donut, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True)
 
+
+# ======================================================
+# BUBBLE CHART COMPARISON
+# ======================================================
+st.markdown("### 🔵 Country Comparison (Bubble Chart)")
+
+latest_df = melt_df[melt_df["year"] == year]
+
+fig_bubble = px.scatter(
+    latest_df,
+    x="value",
+    y="Country Name",
+    size="value",
+    color="Region",
+    title=f"{selected_indicator} - Country Comparison ({year})",
+    height=700
+)
+
+st.plotly_chart(fig_bubble, use_container_width=True)
+
+
+# ======================================================
+# DATA TABLE
+# ======================================================
+st.markdown("### 📄 Filtered Dataset")
+
+st.dataframe(latest_df.sort_values("value", ascending=False))
