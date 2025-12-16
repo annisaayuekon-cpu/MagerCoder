@@ -242,3 +242,71 @@ fig_map = px.choropleth(
     title=f"Global/Regional Distribution ({selected_year})",
 )
 st.plotly_chart(fig_map, use_container_width=True)
+
+# ==========================================
+# DONUT CHART SECTION
+# ==========================================
+st.subheader("🍩 Indicator Category Breakdown")
+
+df_latest = df_long[df_long["year"] == selected_year]
+
+# ---------------------
+# CATEGORY DEFINITIONS
+# ---------------------
+def categorize_indicator(value, indicator):
+
+    if indicator.startswith("1.1"):  # GDP
+        if value < 5e10: return "Low GDP"
+        elif value < 5e11: return "Middle GDP"
+        elif value < 1e12: return "High GDP"
+        else: return "Very High GDP"
+
+    if indicator.startswith("1.2"):  # GDP per capita
+        if value < 1000: return "Low Income"
+        elif value < 4000: return "Lower Middle"
+        elif value < 12000: return "Upper Middle"
+        else: return "High Income"
+
+    if indicator.startswith("1.3"):  # GDP growth %
+        if value < 0: return "Negative"
+        elif value < 3: return "Low"
+        elif value < 6: return "Moderate"
+        else: return "High"
+
+    if indicator.startswith("3.1"):  # Inflation
+        if value > 50: return "Hyperinflation"
+        elif value > 10: return "High"
+        elif value > 3: return "Moderate"
+        else: return "Stable"
+
+    if indicator.startswith("2.2"):  # Unemployment
+        if value < 5: return "Low"
+        elif value < 10: return "Medium"
+        elif value < 15: return "High"
+        else: return "Very High"
+
+    if indicator.startswith("5.1"):  # FDI
+        if value < 1e9: return "Very Low"
+        elif value < 5e9: return "Low"
+        elif value < 2e10: return "Medium"
+        else: return "High"
+
+    return "Other"
+
+
+# Apply categorization
+df_latest["category"] = df_latest["value"].apply(lambda x: categorize_indicator(x, selected_indicator))
+
+# Create donut chart
+donut_df = df_latest.groupby("category")["value"].count().reset_index().rename(columns={"value": "count"})
+
+fig_donut = px.pie(
+    donut_df,
+    names="category",
+    values="count",
+    hole=0.5,
+    title=f"{selected_indicator} — Category Breakdown ({selected_year})",
+)
+
+st.plotly_chart(fig_donut, use_container_width=True)
+
