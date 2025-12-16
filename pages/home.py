@@ -39,15 +39,14 @@ FILES_STRUCTURE = {
     "1. Ekonomi Makro": {
         "GDP (Current US$)": "1.1. GDP (CURRENT US$).csv",
         "GDP Per Capita": "1.2. GDP PER CAPITA.csv",
-        "GDP Growth (%)": "1.3. GDP growth (%).csv",
+        "GDP Growth (%)": "1.3 GDP growth (%).csv",
         "GNI": "1.4 Gross National Income (GNI).csv",
         "GDP by Sector": "1.5 GDP by sector (pertanian, industri, jasa).csv"
     },
     "2. Ketenagakerjaan": {
         "Labor Force Participation": "2.1 Labor force participation rate.csv",
         "Unemployment Rate": "2.2 Unemployment rate.csv",
-        "Youth Unemployment": "2.3 Youth unemployment.csv",
-        "Employment by Sector": "2.4 Employment by sector.csv"
+        
     },
     "3. Inflasi & Konsumsi": {
         "Inflation (Consumer Prices)": "3.1 Inflation, consumer prices (%).csv",
@@ -61,7 +60,7 @@ FILES_STRUCTURE = {
     },
     "5. Investasi": {
         "FDI (Foreign Direct Investment)": "5.1 Foreign Direct Investment (FDI).csv",
-        "Gross Capital Formation": "5.2 Gross capital formation.csv"
+        
     },
     "6. Sosial (Kemiskinan & Ketimpangan)": {
         "Poverty Headcount ($4.20)": "6.1. POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
