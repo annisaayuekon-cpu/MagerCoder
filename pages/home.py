@@ -4,172 +4,201 @@ import plotly.express as px
 import os
 
 # =====================================================
-# PAGE CONFIG
+# BASIC CONFIG
 # =====================================================
 st.set_page_config(
-    page_title="Dashboard Ekonomi – Ringkasan",
+    page_title="Economic Visualization Dashboard",
     layout="wide"
 )
 
-# =====================================================
-# PATH
-# =====================================================
-DATA_DIR = "data"
+st.title("🌍 Economic Visualization Dashboard")
+st.caption("Interactive dashboard using World Bank data (PPI Style)")
 
 # =====================================================
-# LOADERS
+# PATH HANDLING (ANTI ERROR STREAMLIT CLOUD)
 # =====================================================
-@st.cache_data
-def load_indicator(filename: str) -> pd.DataFrame:
-    return pd.read_csv(os.path.join(DATA_DIR, filename))
-
-@st.cache_data
-def load_country_metadata() -> pd.DataFrame:
-    return pd.read_csv(os.path.join(DATA_DIR, "country_metadata.csv"))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
 
 # =====================================================
 # LOAD METADATA
 # =====================================================
-country_meta = load_country_metadata()
+@st.cache_data
+def load_metadata():
+    path = os.path.join(DATA_DIR, "country_metadata.csv")
+    df = pd.read_csv(path)
+
+    df = df.rename(columns={
+        "Country Name": "country",
+        "Country Code": "code"
+    })
+
+    return df
+
+metadata = load_metadata()
 
 # =====================================================
-# HEADER
+# INDICATOR CONFIG (SESUI PERMINTAAN KAMU)
 # =====================================================
-st.title("📊 Dashboard Ekonomi")
-st.caption("Gaya World Bank / PPI")
+INDICATORS = {
+    "📈 Pertumbuhan Ekonomi & GDP": {
+        "GDP Growth (%)": "1.3 GDP growth (%).csv"
+    },
+    "👷 Tenaga Kerja & Pengangguran": {
+        "Unemployment Rate": "2.2 Unemployment rate.csv"
+    },
+    "🔥 Inflasi & Harga Konsumen": {
+        "Inflation (CPI)": "3.1 Inflation, consumer prices (%).csv"
+    },
+    "🌍 Perdagangan Internasional": {
+        "Exports": "4.1 Exports of goods and services.csv",
+        "Imports": "4.2 Imports of goods and services.csv"
+    },
+    "💼 Investasi (FDI & Kapital)": {
+        "FDI": "5.1 Foreign Direct Investment (FDI).csv"
+    },
+    "📉 Kemiskinan & Ketimpangan": {
+        "Gini Index": "6.2 GINI INDEX.csv"
+    },
+    "👥 Populasi & Demografi": {
+        "Total Population": "7.1 TOTAL POPULATION.csv"
+    },
+    "🎓 Pendidikan": {
+        "School Enrollment": "8.1 SCHOOL ENROLLMENT.csv"
+    },
+    "🏥 Kesehatan": {
+        "Health Expenditure": "9.1 HEALTH EXPENDITURE.csv"
+    },
+    "🌱 Energi & Lingkungan": {
+        "CO2 Emissions": "10.1 CO EMISSIONS.csv",
+        "Electricity Access": "10.4 ELECTRICITY ACCESS.csv"
+    }
+}
 
 # =====================================================
-# SIDEBAR
+# FILTER UI (TOP BAR STYLE)
 # =====================================================
-st.sidebar.header("Filter")
+col1, col2, col3 = st.columns([2, 2, 2])
 
-indicator_files = sorted(
-    f for f in os.listdir(DATA_DIR)
-    if f.endswith(".csv") and f != "country_metadata.csv"
+with col1:
+    category = st.selectbox(
+        "📂 Kategori Indikator",
+        list(INDICATORS.keys())
+    )
+
+with col2:
+    indicator = st.selectbox(
+        "📊 Pilih Indikator",
+        list(INDICATORS[category].keys())
+    )
+
+with col3:
+    country = st.selectbox(
+        "🌎 Pilih Negara",
+        ["Global"] + sorted(metadata["country"].unique())
+    )
+
+# =====================================================
+# LOAD INDICATOR DATA
+# =====================================================
+@st.cache_data
+def load_indicator(filename):
+    path = os.path.join(DATA_DIR, filename)
+    df = pd.read_csv(path)
+
+    df = df.rename(columns={
+        "Country Name": "country",
+        "Country Code": "code"
+    })
+
+    df = df.melt(
+        id_vars=["country", "code"],
+        var_name="year",
+        value_name="value"
+    )
+
+    df["year"] = pd.to_numeric(df["year"], errors="coerce")
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+
+    return df.dropna(subset=["year"])
+
+filename = INDICATORS[category][indicator]
+df = load_indicator(filename)
+
+# =====================================================
+# FILTER COUNTRY
+# =====================================================
+if country != "Global":
+    df = df[df["country"] == country]
+
+# =====================================================
+# KPI SECTION
+# =====================================================
+latest_year = df["year"].max()
+latest_value = df[df["year"] == latest_year]["value"].mean()
+
+k1, k2, k3 = st.columns(3)
+
+k1.metric("📅 Tahun Terakhir", int(latest_year))
+k2.metric("📈 Nilai Rata-rata", f"{latest_value:,.2f}")
+k3.metric("🌍 Jumlah Negara", df["country"].nunique())
+
+# =====================================================
+# TIME SERIES
+# =====================================================
+st.subheader("📈 Tren Waktu")
+
+fig_ts = px.line(
+    df,
+    x="year",
+    y="value",
+    color="country" if country == "Global" else None,
+    labels={"value": indicator, "year": "Tahun"},
+    height=420
 )
 
-indicator = st.sidebar.selectbox(
-    "Indikator",
-    indicator_files
+st.plotly_chart(fig_ts, use_container_width=True)
+
+# =====================================================
+# TOP 10 & BOTTOM 10
+# =====================================================
+st.subheader("🏆 Top 10 & Bottom 10 Negara")
+
+latest_df = df[df["year"] == latest_year]
+
+top10 = latest_df.sort_values("value", ascending=False).head(10)
+bottom10 = latest_df.sort_values("value").head(10)
+
+c1, c2 = st.columns(2)
+
+with c1:
+    st.markdown("### 🔼 Top 10")
+    st.dataframe(top10[["country", "value"]], use_container_width=True)
+
+with c2:
+    st.markdown("### 🔽 Bottom 10")
+    st.dataframe(bottom10[["country", "value"]], use_container_width=True)
+
+# =====================================================
+# BUBBLE CHART (COUNTRY COMPARISON)
+# =====================================================
+st.subheader("🫧 Country Comparison (Bubble Chart)")
+
+fig_bubble = px.scatter(
+    latest_df,
+    x="value",
+    y="country",
+    size="value",
+    hover_name="country",
+    size_max=40,
+    height=500
 )
 
-df = load_indicator(indicator)
+st.plotly_chart(fig_bubble, use_container_width=True)
 
 # =====================================================
-# VALIDATION
+# FOOTNOTE
 # =====================================================
-required_cols = {"Country", "Country Code", "Year", "Value"}
-if not required_cols.issubset(df.columns):
-    st.error("Struktur CSV indikator tidak sesuai")
-    st.stop()
-
-# =====================================================
-# MERGE METADATA (INI KUNCI)
-# =====================================================
-df = df.merge(
-    country_meta,
-    on=["Country", "Country Code"],
-    how="left"
+st.caption(
+    "📌 Data source: World Bank | Visualization inspired by PPI Dashboard"
 )
-
-# =====================================================
-# FILTERS
-# =====================================================
-countries = sorted(df["Country"].dropna().unique())
-
-selected_countries = st.sidebar.multiselect(
-    "Negara",
-    countries,
-    default=countries[:5]
-)
-
-year_min, year_max = int(df["Year"].min()), int(df["Year"].max())
-year_range = st.sidebar.slider(
-    "Tahun",
-    year_min,
-    year_max,
-    (year_min, year_max)
-)
-
-regions = sorted(df["Region"].dropna().unique())
-selected_regions = st.sidebar.multiselect(
-    "Region",
-    regions,
-    default=regions
-)
-
-# =====================================================
-# APPLY FILTER
-# =====================================================
-df_filtered = df[
-    (df["Country"].isin(selected_countries)) &
-    (df["Year"].between(*year_range)) &
-    (df["Region"].isin(selected_regions))
-]
-
-# =====================================================
-# METRICS
-# =====================================================
-latest_year = df_filtered["Year"].max()
-df_latest = df_filtered[df_filtered["Year"] == latest_year]
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Tahun", latest_year)
-col2.metric("Negara", df_latest["Country"].nunique())
-col3.metric("Rata-rata", round(df_latest["Value"].mean(), 2))
-
-# =====================================================
-# LINE CHART
-# =====================================================
-st.subheader(indicator.replace(".csv", ""))
-
-fig_line = px.line(
-    df_filtered,
-    x="Year",
-    y="Value",
-    color="Country",
-    markers=True
-)
-
-st.plotly_chart(fig_line, use_container_width=True)
-
-# =====================================================
-# MAP
-# =====================================================
-st.subheader("Peta Global")
-
-fig_map = px.choropleth(
-    df_latest,
-    locations="Country Code",
-    color="Value",
-    hover_name="Country",
-    color_continuous_scale="Blues"
-)
-
-st.plotly_chart(fig_map, use_container_width=True)
-
-# =====================================================
-# REGION SUMMARY
-# =====================================================
-st.subheader("Rata-rata per Region")
-
-region_summary = (
-    df_latest
-    .groupby("Region", as_index=False)["Value"]
-    .mean()
-)
-
-fig_bar = px.bar(
-    region_summary,
-    x="Region",
-    y="Value",
-    color="Region"
-)
-
-st.plotly_chart(fig_bar, use_container_width=True)
-
-# =====================================================
-# DATA TABLE
-# =====================================================
-with st.expander("Lihat Data"):
-    st.dataframe(df_filtered, use_container_width=True)
