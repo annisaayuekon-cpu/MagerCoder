@@ -12,54 +12,29 @@ st.set_page_config(
     page_icon="🌍"
 )
 
-# --- 2. CUSTOM CSS (Gaya PPI Dashboard) ---
+# --- 2. CUSTOM CSS ---
 st.markdown("""
 <style>
     html, body, [class*="css"] { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
     .main-header { font-size: 2.5rem; font-weight: bold; color: #333; margin-bottom: 0px; }
     .sub-header { font-size: 1rem; color: #666; margin-bottom: 20px; }
-    
-    /* Blue Filter Bar */
-    .filter-bar {
-        background-color: #009FDA;
-        padding: 20px;
-        color: white;
-        margin-bottom: 20px;
-        border-radius: 4px;
-    }
-    
-    /* Metric Cards */
+    .filter-bar { background-color: #009FDA; padding: 20px; color: white; margin-bottom: 20px; border-radius: 4px; }
     .metric-container { display: flex; gap: 15px; margin-bottom: 20px; }
-    .metric-card {
-        flex: 1; padding: 20px; color: white;
-        border-radius: 0px; min-height: 120px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
+    .metric-card { flex: 1; padding: 20px; color: white; border-radius: 0px; min-height: 120px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     .card-blue { background-color: #00B5E2; }
     .card-green { background-color: #00A651; }
     .card-orange { background-color: #F39200; }
     .card-red { background-color: #E74C3C; }
-    
     .metric-value { font-size: 1.8rem; font-weight: bold; }
     .metric-label { font-size: 0.9rem; margin-top: 5px; opacity: 0.9; }
-    
-    /* Styling Streamlit Widgets inside Blue Bar */
     .stSelectbox label, .stSlider label { color: white !important; }
-    
-    /* Section Headers */
-    .section-title {
-        font-size: 1.4rem; color: #444; font-weight: 600;
-        border-bottom: 3px solid #009FDA;
-        padding-bottom: 5px; margin-top: 30px; margin-bottom: 20px;
-    }
+    .section-title { font-size: 1.4rem; color: #444; font-weight: 600; border-bottom: 3px solid #009FDA; padding-bottom: 5px; margin-top: 30px; margin-bottom: 20px; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. PENGATURAN DATA ---
+DATA_FOLDER = "data"
 
-DATA_FOLDER = "data"  # Pastikan folder ini ada
-
-# Mapping File berdasarkan Kategori
 FILES_STRUCTURE = {
     "1. Ekonomi Makro": {
         "GDP (Current US$)": "1.1. GDP (CURRENT US$).csv",
@@ -120,135 +95,125 @@ FILES_STRUCTURE = {
 @st.cache_data
 def load_and_clean_data(filename):
     """
-    Toleran terhadap delimiter ',' dan ';'.
-    Mengubah Wide Format (Tahun sebagai kolom) ke Long Format.
+    Fungsi Pintar:
+    1. Deteksi Delimiter (; atau ,)
+    2. Deteksi Format Data (Long/Sudah Rapi vs Wide/Perlu Melt)
     """
     filepath = os.path.join(DATA_FOLDER, filename)
-    
-    if not os.path.exists(filepath):
-        return None
+    if not os.path.exists(filepath): return None
     
     try:
-        # LOGIKA DETEKSI DELIMITER
-        # 1. Coba baca dengan titik koma (;)
+        # A. DETEKSI DELIMITER
         df = pd.read_csv(filepath, sep=';')
-        
-        # 2. Jika kolom terdeteksi < 2, kemungkinan salah delimiter. Coba pakai koma (,).
-        if df.shape[1] < 2:
+        if df.shape[1] < 2: 
             df = pd.read_csv(filepath, sep=',')
 
-        # Membersihkan nama kolom (hapus spasi ekstra)
+        # Bersihkan nama kolom
         df.columns = df.columns.str.strip()
 
-        # Deteksi kolom Tahun (misal: 1990, 2000, 2024)
-        # Kita cari nama kolom yang terdiri dari 4 digit angka
-        year_cols = [c for c in df.columns if c.isdigit() and len(c) == 4]
+        # B. DETEKSI FORMAT DATA
         
-        # Jika tidak ketemu kolom tahun angka, mungkin formatnya beda, kita return raw dulu buat debug
-        if not year_cols:
-            st.warning(f"Tidak dapat mendeteksi kolom tahun pada file {filename}.")
-            return df
-        
-        # Kolom Metadata (Negara, Kode, dll adalah kolom SELAIN tahun)
-        id_vars = [c for c in df.columns if c not in year_cols]
-        
-        # MELT DATA: Mengubah kolom tahun menjadi baris
-        df_melted = df.melt(id_vars=id_vars, value_vars=year_cols, var_name='Year', value_name='Value')
-        
-        # Konversi tipe data agar grafik bisa baca
-        df_melted['Year'] = pd.to_numeric(df_melted['Year'], errors='coerce')
-        # Ganti koma desimal (jika ada format Eropa misal 1.000,50) lalu convert ke numeric
-        # Asumsi data di screenshot menggunakan titik sebagai desimal, jadi aman.
-        df_melted['Value'] = pd.to_numeric(df_melted['Value'], errors='coerce')
-        
-        # Hapus baris yang value-nya kosong/NaN
-        df_melted = df_melted.dropna(subset=['Value'])
-        
-        return df_melted
+        # KASUS 1: DATA SUDAH RAPI (FORMAT LONG) - Contoh: CO2 EMISSIONS.csv
+        # Ciri: Ada kolom bernama 'Year'
+        if 'Year' in df.columns:
+            # Kita perlu standarisasi kolom nilai menjadi 'Value'
+            # Cari kolom yang BUKAN metadata (Country Name, Code, Year)
+            metadata_cols = ['Country Name', 'Country Code', 'Year', 'Unnamed: 0']
+            value_cols = [c for c in df.columns if c not in metadata_cols]
+            
+            if value_cols:
+                # Ambil kolom nilai pertama yg ditemukan (misal: 'CO2 emissions (per capita)')
+                # dan rename jadi 'Value' agar kode visualisasi di bawah tidak error
+                df = df.rename(columns={value_cols[0]: 'Value'})
+            
+            # Pastikan tipe data benar
+            df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+            df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+            return df.dropna(subset=['Value'])
+
+        # KASUS 2: DATA MELEBAR (FORMAT WIDE) - Contoh: GDP.csv
+        # Ciri: Tahun menjadi nama kolom (1990, 1991, ...)
+        else:
+            year_cols = [c for c in df.columns if c.isdigit() and len(c) == 4]
+            if not year_cols:
+                # Jika tidak ketemu format apapun
+                st.error(f"Format kolom pada file {filename} tidak dikenali.")
+                return None
+            
+            id_vars = [c for c in df.columns if c not in year_cols]
+            df_melted = df.melt(id_vars=id_vars, value_vars=year_cols, var_name='Year', value_name='Value')
+            
+            df_melted['Year'] = pd.to_numeric(df_melted['Year'], errors='coerce')
+            df_melted['Value'] = pd.to_numeric(df_melted['Value'], errors='coerce')
+            return df_melted.dropna(subset=['Value'])
 
     except Exception as e:
         st.error(f"Error reading file {filename}: {e}")
         return None
 
-# --- 4. HEADER & FILTER BAR ---
+# --- 4. HEADER & NAVIGASI ---
 
-st.markdown('<div class="main-header">World Bank Data Visualization</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Interactive dashboard for global development indicators.</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">World Bank Data Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Interactive visualization for global development indicators.</div>', unsafe_allow_html=True)
 
-# Container Biru untuk Navigasi
 with st.container():
     st.markdown('<div class="filter-bar">', unsafe_allow_html=True)
-    
     col1, col2, col3 = st.columns([1.5, 2, 1.5])
     
     with col1:
-        # Pilih Kategori Utama
         selected_category = st.selectbox("1. Select Category", list(FILES_STRUCTURE.keys()))
-    
     with col2:
-        # Pilih Indikator (File CSV)
         available_files = FILES_STRUCTURE[selected_category]
         selected_indicator_name = st.selectbox("2. Select Indicator", list(available_files.keys()))
         selected_filename = available_files[selected_indicator_name]
-    
     with col3:
-        # Filter Tahun
         year_range = st.slider("3. Filter Year", 1990, 2024, (2000, 2023))
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 5. DATA PROCESSING ---
+# --- 5. VISUALISASI ---
 
 df = load_and_clean_data(selected_filename)
 
 if df is not None and not df.empty:
-    # Pastikan kolom 'Year' dan 'Value' ada (hasil melt)
     if 'Year' in df.columns and 'Value' in df.columns:
         
-        # Filter Dataframe sesuai Slider Tahun
+        # Filter Tahun
         df_filtered = df[(df['Year'] >= year_range[0]) & (df['Year'] <= year_range[1])]
         
         if df_filtered.empty:
             st.warning("Data kosong untuk rentang tahun yang dipilih.")
         else:
-            # Ambil Data Tahun Terakhir yang tersedia di rentang filter untuk KPI
             latest_year_in_data = df_filtered['Year'].max()
             df_latest = df_filtered[df_filtered['Year'] == latest_year_in_data]
             
-            # --- 6. METRIC CARDS ---
-            
-            # Hitung KPI
-            avg_value = df_latest['Value'].mean()
-            # Cek kolom nama negara, sesuaikan dengan nama kolom di CSV Anda (screenshot: Country Name)
+            # Tentukan kolom Nama Negara (Bisa 'Country Name' atau kolom pertama)
             country_col = 'Country Name' if 'Country Name' in df_latest.columns else df_latest.columns[0]
+
+            # --- KPI CARDS ---
+            avg_val = df_latest['Value'].mean()
             total_countries = df_latest[country_col].nunique()
             
-            # Negara Tertinggi
             if not df_latest.empty:
-                top_country_row = df_latest.loc[df_latest['Value'].idxmax()]
-                top_country_name = top_country_row[country_col]
-                top_country_val = top_country_row['Value']
+                top_row = df_latest.loc[df_latest['Value'].idxmax()]
+                top_name, top_val = top_row[country_col], top_row['Value']
             else:
-                top_country_name = "-"
-                top_country_val = 0
+                top_name, top_val = "-", 0
             
-            # Global Sum
-            val_sum = df_latest['Value'].sum()
+            val_sum = df_latest['Value'].sum() # Relevan untuk CO2 total, Populasi, GDP
             
-            # HTML Cards
             st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-card card-blue">
                     <div class="metric-value">{total_countries}</div>
-                    <div class="metric-label">Countries with Data ({latest_year_in_data})</div>
+                    <div class="metric-label">Countries ({latest_year_in_data})</div>
                 </div>
                 <div class="metric-card card-green">
-                    <div class="metric-value">{avg_value:,.2f}</div>
+                    <div class="metric-value">{avg_val:,.2f}</div>
                     <div class="metric-label">Global Average</div>
                 </div>
                 <div class="metric-card card-orange">
-                    <div class="metric-value">{str(top_country_name)[:15]}..</div>
-                    <div class="metric-label">Highest: {top_country_val:,.2f}</div>
+                    <div class="metric-value">{str(top_name)[:15]}..</div>
+                    <div class="metric-label">Highest: {top_val:,.2f}</div>
                 </div>
                 <div class="metric-card card-red">
                     <div class="metric-value">{val_sum:,.0f}</div>
@@ -257,114 +222,53 @@ if df is not None and not df.empty:
             </div>
             """, unsafe_allow_html=True)
 
-            # --- 7. CHARTS SECTION ---
-            
+            # --- CHARTS ---
             c_left, c_right = st.columns([2, 1])
             
             with c_left:
-                st.markdown('<div class="section-title">Trends Over Time (Top 5 Countries)</div>', unsafe_allow_html=True)
+                st.markdown('<div class="section-title">Trends Over Time (Top 5)</div>', unsafe_allow_html=True)
+                top_5 = df_latest.nlargest(5, 'Value')[country_col].tolist()
+                df_trend = df_filtered[df_filtered[country_col].isin(top_5)]
                 
-                # Ambil 5 negara dengan nilai terbesar di tahun terakhir untuk diplot trennya
-                top_5_countries = df_latest.nlargest(5, 'Value')[country_col].tolist()
-                df_trend = df_filtered[df_filtered[country_col].isin(top_5_countries)]
-                
-                fig_trend = px.line(
-                    df_trend, 
-                    x="Year", y="Value", color=country_col,
-                    markers=True,
-                    title=None,
-                    color_discrete_sequence=px.colors.qualitative.Safe
-                )
-                # Style Area Chart seperti PPI
-                fig_trend.update_traces(fill='tozeroy')
-                fig_trend.update_layout(
-                    height=400,
-                    xaxis_title="Year",
-                    yaxis_title=selected_indicator_name,
-                    legend=dict(orientation="h", y=1.1, x=0),
-                    margin=dict(l=0, r=0, t=0, b=0)
-                )
-                st.plotly_chart(fig_trend, use_container_width=True)
+                fig = px.line(df_trend, x="Year", y="Value", color=country_col, markers=True, color_discrete_sequence=px.colors.qualitative.Safe)
+                fig.update_traces(fill='tozeroy')
+                fig.update_layout(height=400, xaxis_title="Year", yaxis_title=selected_indicator_name, legend=dict(orientation="h", y=1.1, x=0))
+                st.plotly_chart(fig, use_container_width=True)
                 
             with c_right:
-                st.markdown(f'<div class="section-title">Top 10 Ranking ({latest_year_in_data})</div>', unsafe_allow_html=True)
-                
+                st.markdown(f'<div class="section-title">Top 10 ({latest_year_in_data})</div>', unsafe_allow_html=True)
                 df_rank = df_latest.nlargest(10, 'Value').sort_values('Value', ascending=True)
-                
-                fig_bar = px.bar(
-                    df_rank, 
-                    x="Value", y=country_col, 
-                    orientation='h',
-                    text_auto='.2s', # Format angka singkatan (k, M, B)
-                    color="Value",
-                    color_continuous_scale="Blues"
-                )
-                fig_bar.update_layout(
-                    height=400,
-                    xaxis_title=None,
-                    yaxis_title=None,
-                    coloraxis_showscale=False,
-                    margin=dict(l=0, r=0, t=0, b=0)
-                )
+                fig_bar = px.bar(df_rank, x="Value", y=country_col, orientation='h', text_auto='.2s', color="Value", color_continuous_scale="Blues")
+                fig_bar.update_layout(height=400, xaxis_title=None, yaxis_title=None, coloraxis_showscale=False)
                 st.plotly_chart(fig_bar, use_container_width=True)
 
-            # --- 8. MAP & DISTRIBUTION ---
-            
+            # --- MAP & TABLE ---
             st.markdown('<div class="section-title">Global Distribution</div>', unsafe_allow_html=True)
-            
             col_map, col_dist = st.columns([3, 1])
             
             with col_map:
-                # Cek apakah ada kolom kode negara (biasanya ISO 3 digit) untuk peta
+                # Cek kode negara untuk peta
                 code_col = 'Country Code' if 'Country Code' in df_latest.columns else None
-                
                 if code_col:
-                    fig_map = px.choropleth(
-                        df_latest,
-                        locations=code_col,
-                        color="Value",
-                        hover_name=country_col,
-                        color_continuous_scale="Blues",
-                        title=f"Geographic Spread - {selected_indicator_name}"
-                    )
-                    fig_map.update_layout(margin=dict(l=0, r=0, t=30, b=0))
+                    fig_map = px.choropleth(df_latest, locations=code_col, color="Value", hover_name=country_col, color_continuous_scale="Blues")
+                    fig_map.update_layout(margin=dict(l=0, r=0, t=0, b=0))
                     st.plotly_chart(fig_map, use_container_width=True)
                 else:
-                    st.warning("Column 'Country Code' not found. Cannot render map properly.")
-                    
+                    st.info("Peta tidak tersedia (Kolom 'Country Code' tidak ditemukan).")
+            
             with col_dist:
-                # Donut Chart distribusi
                 try:
-                    df_latest['Category'] = pd.qcut(df_latest['Value'], q=3, labels=["Low Tier", "Mid Tier", "Top Tier"])
-                    dist_counts = df_latest['Category'].value_counts().reset_index()
-                    dist_counts.columns = ['Category', 'Count']
-                    
-                    fig_pie = px.pie(
-                        dist_counts, values='Count', names='Category', hole=0.5,
-                        color_discrete_sequence=px.colors.qualitative.Pastel
-                    )
-                    fig_pie.update_layout(
-                        title="Distribution Tiers", title_x=0.5,
-                        margin=dict(l=0, r=0, t=30, b=0),
-                        showlegend=True, legend=dict(orientation="h", y=-0.1)
-                    )
+                    df_latest['Tier'] = pd.qcut(df_latest['Value'], 3, labels=["Low", "Mid", "High"])
+                    fig_pie = px.pie(df_latest['Tier'].value_counts().reset_index(), values='count', names='Tier', hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
+                    fig_pie.update_layout(showlegend=False, margin=dict(t=0, b=0, l=0, r=0))
                     st.plotly_chart(fig_pie, use_container_width=True)
                 except:
-                    st.info("Not enough data points for distribution analysis.")
+                    st.write("Data distribution not available.")
 
-            # --- 9. RAW DATA TABLE ---
-            st.markdown('<div class="section-title">Data Table</div>', unsafe_allow_html=True)
-            
-            with st.expander("Show Raw Data (Pivoted View)"):
-                # Pivot kembali ke Wide Format untuk tampilan tabel
-                try:
-                    df_wide_view = df_filtered.pivot(index=[country_col, 'Country Code'], columns='Year', values='Value')
-                    st.dataframe(df_wide_view, use_container_width=True)
-                except:
-                    st.dataframe(df_filtered, use_container_width=True)
+            st.markdown('<div class="section-title">Raw Data</div>', unsafe_allow_html=True)
+            with st.expander("Show Data Table"):
+                st.dataframe(df_filtered, use_container_width=True)
     else:
-        st.error("Format data tidak dikenali setelah proses cleaning. Pastikan ada kolom Tahun (angka 4 digit).")
-
+        st.error("Struktur data tidak valid. Kolom 'Year' atau 'Value' hilang setelah pemrosesan.")
 else:
-    # Error Handling jika file kosong atau tidak ditemukan
-    st.warning(f"File '{selected_filename}' tidak ditemukan di folder '{DATA_FOLDER}' atau gagal dibaca.")
+    st.warning(f"File '{selected_filename}' tidak ditemukan di folder '{DATA_FOLDER}'.")
