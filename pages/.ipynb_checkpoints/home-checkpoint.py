@@ -101,41 +101,77 @@ FILES = {
 # yang di-exclude dari Top/Bottom 10
 # -------------------------------------------------
 EXCLUDED_AGGREGATES = {
-    "World",
+    # Income level
     "High income",
     "Low income",
     "Lower middle income",
     "Upper middle income",
     "Middle income",
     "Low & middle income",
-    "Euro area",
-    "European Union",
-    "OECD members",
-    "Arab World",
-    "East Asia & Pacific",
-    "East Asia & Pacific (excluding high income)",
-    "East Asia & Pacific (IDA & IBRD countries)",
-    "Europe & Central Asia",
-    "Europe & Central Asia (excluding high income)",
-    "Europe & Central Asia (IDA & IBRD countries)",
-    "Latin America & Caribbean",
-    "Latin America & Caribbean (excluding high income)",
-    "Latin America & Caribbean (IDA & IBRD countries)",
-    "Middle East & North Africa",
-    "Middle East & North Africa (IDA & IBRD countries)",
-    "South Asia",
-    "Sub-Saharan Africa",
-    "Sub-Saharan Africa (excluding high income)",
-    "Sub-Saharan Africa (IDA & IBRD countries)",
+
+    # Lending group
+    "IDA & IBRD total",
     "IDA only",
     "IDA total",
     "IDA blend",
     "IBRD only",
+
+    # Region & sub-region utama World Bank
+    "World",
+    "Euro area",
+    "European Union",
+    "OECD members",
+    "Arab World",
+
+    "East Asia & Pacific",
+    "East Asia & Pacific (excluding high income)",
+    "East Asia & Pacific (IDA & IBRD countries)",
+
+    "Europe & Central Asia",
+    "Europe & Central Asia (excluding high income)",
+    "Europe & Central Asia (IDA & IBRD countries)",
+    "Central Europe and the Baltics",
+
+    "Latin America & Caribbean",
+    "Latin America & Caribbean (excluding high income)",
+    "Latin America & Caribbean (IDA & IBRD countries)",
+    "Latin America & the Caribbean (IDA & IBRD countries)",
+
+    "Middle East & North Africa",
+    "Middle East & North Africa (excluding high income)",
+    "Middle East & North Africa (IDA & IBRD countries)",
+
+    "North America",
+
+    "South Asia",
+    "South Asia (IDA & IBRD)",
+
+    "Sub-Saharan Africa",
+    "Sub-Saharan Africa (excluding high income)",
+    "Sub-Saharan Africa (IDA & IBRD countries)",
+
+    "Africa Eastern and Southern",
+    "Africa Western and Central",
+
+    # Small states & special groups
     "Small states",
     "Other small states",
+    "Caribbean small states",
+    "Pacific island small states",
+    "Not classified",
+
     "Fragile and conflict affected situations",
     "Heavily indebted poor countries (HIPC)",
     "Least developed countries: UN classification",
+
+    # Demographic dividend groups
+    "Pre-demographic dividend",
+    "Early-demographic dividend",
+    "Late-demographic dividend",
+    "Post-demographic dividend",
+
+    # Kelompok kawasan khusus lain
+    "Middle East, North Africa, Afghanistan & Pakistan",
 }
 
 <<<<<<< HEAD
@@ -157,6 +193,7 @@ def read_file_try(path):
 # -------------------------------------------------
 @st.cache_data
 def load_csv(path: str) -> pd.DataFrame:
+    """Baca CSV dengan delimiter fleksibel dan lewati baris bermasalah."""
     if not os.path.exists(path):
         return pd.DataFrame()
 >>>>>>> d5e53f63e7b2c285f9a80937433a970cb665fd86
@@ -381,7 +418,7 @@ def ensure_iso3(df: pd.DataFrame):
 
 
 def pivot_long_first_numeric(df: pd.DataFrame) -> pd.DataFrame:
-    """country, year, value (long format)."""
+    """Ubah ke format long: country, year, value."""
     years = detect_year_columns(df)
     if not years:
         return pd.DataFrame()
@@ -401,6 +438,7 @@ def pivot_long_first_numeric(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def latest_value(df: pd.DataFrame):
+    """Ambil rata-rata global tahun terakhir dalam dataframe wide."""
     years = detect_year_columns(df)
     if not years:
         return None, None
@@ -409,7 +447,7 @@ def latest_value(df: pd.DataFrame):
     vals = pd.to_numeric(df[last], errors="coerce").dropna()
     if vals.empty:
         return None, last
-    return float(vals.mean()), last  # rata-rata global
+    return float(vals.mean()), last
 
 
 def exclude_aggregates(df: pd.DataFrame) -> pd.DataFrame:
@@ -514,6 +552,7 @@ col1, col2, col3, col4 = st.columns(4, gap="large")
 
 
 def render_kpi_card(col, title, emoji, long_df, country, year):
+    """Kartu KPI: ambil nilai terbaru ≤ tahun yang dipilih."""
     colors = {
         "GDP growth (%)": "#ffe8d6",
         "GDP per capita": "#e8f6ff",
@@ -523,22 +562,25 @@ def render_kpi_card(col, title, emoji, long_df, country, year):
     bg = colors.get(title, "#f7f7f7")
 
     value = None
+    shown_year = year
+
     if (
         long_df is not None
         and not long_df.empty
         and country is not None
         and year is not None
     ):
-        sub = long_df[
-            (long_df["country"] == country) & (long_df["year"] == year)
-        ]
+        sub = long_df[long_df["country"] == country]
+        sub = sub[sub["year"] <= int(year)]
         if not sub.empty:
-            value = float(sub["value"].iloc[0])
+            last_row = sub.sort_values("year").iloc[-1]
+            value = float(last_row["value"])
+            shown_year = int(last_row["year"])
 
     display = "—" if value is None else f"{value:,.2f}"
     subtitle = (
-        f"{country}, {year}"
-        if (country is not None and year is not None)
+        f"{country}, {shown_year}"
+        if (country is not None and shown_year is not None)
         else "Data tidak tersedia"
     )
 
@@ -568,7 +610,7 @@ for (title, emoji), col in zip(
 st.write("---")
 
 # -------------------------------------------------
-# Mini trend – agregat global
+# Mini trend – agregat global (rata-rata)
 # -------------------------------------------------
 st.subheader("Tren Singkat")
 
@@ -694,7 +736,7 @@ st.subheader("Ringkasan Indikator Lainnya")
 
 files_items = list(FILES.items())
 for i in range(0, len(files_items), 3):
-    trio = files_items[i : i + 3]
+    trio = files_items[i: i + 3]
     cols = st.columns(3)
     for (label, fname), col in zip(trio, cols):
         df = load_csv(os.path.join(DATA_DIR, fname)) if fname else pd.DataFrame()
