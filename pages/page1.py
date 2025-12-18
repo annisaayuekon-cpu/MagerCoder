@@ -25,7 +25,7 @@ DATA_DIR = "data"
 FILES = {
     "GDP (Current US$)": "1.1. GDP (CURRENT US$).csv",
     "GDP per Capita (US$)": "1.2. GDP PER CAPITA.csv",
-    "GDP Growth (%)": "1.3. GDP growth (%).csv",
+    "GDP Growth (%)": "1.3 GDP growth (%).csv",
     "Gross National Income (GNI)": "1.4 Gross National Income (GNI).csv",
 }
 
