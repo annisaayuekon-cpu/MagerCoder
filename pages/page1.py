@@ -162,6 +162,75 @@ with c1:
 with c2:
     st.markdown("**Bottom 10 (terendah)**")
     st.table(latest.tail(10).sort_values("latest_value").style.format({"latest_value": "{:,.2f}"}))
+# =====================================================
+# ANALISIS EKONOMI TERPADU
+# =====================================================
+st.subheader("🧠 Analisis Ekonomi Terpadu")
+
+# Ambil Top & Bottom 5 negara dari hasil statistik
+top_countries = agg_latest.head(5)["country"].tolist()
+bottom_countries = agg_latest.tail(5)["country"].tolist()
+
+# Tentukan jenis indikator untuk narasi
+indicator_lower = indicator.lower()
+
+if "gdp growth" in indicator_lower:
+    indikator_nama = "Pertumbuhan Ekonomi (GDP Growth)"
+    makna_tinggi = "menunjukkan ekspansi ekonomi yang cepat"
+    makna_rendah = "mengindikasikan kontraksi atau stagnasi ekonomi"
+elif "per capita" in indicator_lower:
+    indikator_nama = "GDP per Kapita"
+    makna_tinggi = "mencerminkan tingkat kesejahteraan penduduk yang tinggi"
+    makna_rendah = "menggambarkan rendahnya pendapatan rata-rata masyarakat"
+else:
+    indikator_nama = "GDP (Skala Ekonomi)"
+    makna_tinggi = "menunjukkan skala ekonomi nasional yang besar"
+    makna_rendah = "menunjukkan kapasitas ekonomi yang relatif kecil"
+
+st.markdown(f"""
+### 🔍 Interpretasi Indikator: **{indikator_nama}**
+
+Berdasarkan nilai terbaru, terdapat perbedaan ekonomi yang tajam antar negara.
+
+**Negara dengan nilai tertinggi** seperti **{", ".join(top_countries)}** umumnya:
+- {makna_tinggi}
+- Didukung oleh struktur ekonomi tertentu (misalnya sektor keuangan, sumber daya alam, atau basis industri kuat)
+- Tidak selalu mencerminkan kesejahteraan merata (khususnya untuk GDP total)
+
+Sebaliknya, **negara dengan nilai terendah** seperti **{", ".join(bottom_countries)}**:
+- {makna_rendah}
+- Umumnya menghadapi tantangan struktural seperti konflik, kemiskinan, ketergantungan komoditas, atau instabilitas politik
+""")
+
+# -----------------------------
+# ANALISIS PER INDIKATOR
+# -----------------------------
+st.markdown("""
+### 📊 Sintesis Antarindikator Ekonomi
+
+Analisis ekonomi global perlu dilakukan secara **multidimensi**, karena masing-masing indikator memiliki tolok ukur dan makna yang berbeda:
+
+- **GDP (total)** mencerminkan *kekuatan dan skala ekonomi nasional*
+- **GDP per kapita** menggambarkan *tingkat kesejahteraan rata-rata penduduk*
+- **GDP Growth** menunjukkan *arah dan dinamika perubahan ekonomi jangka pendek*
+
+Negara dengan GDP besar belum tentu memiliki pertumbuhan tinggi, dan negara dengan pertumbuhan tinggi
+belum tentu memiliki tingkat kesejahteraan yang baik.
+""")
+
+st.markdown("""
+### 📌 Kesimpulan Analisis
+
+Hasil analisis menunjukkan bahwa:
+- Negara maju cenderung memiliki **GDP per kapita tinggi** namun **pertumbuhan yang moderat**
+- Tingginya laju pertumbuhan ekonomi di beberapa negara berkembang dapat dipengaruhi oleh low base effect, 
+yaitu kondisi ketika tingkat pertumbuhan terlihat besar karena nilai awal ekonomi yang relatif rendah, bukan semata-mata karena kapasitas ekonomi yang kuat
+- Negara konflik dan miskin struktural cenderung lemah pada seluruh indikator ekonomi
+
+Oleh karena itu, evaluasi kinerja ekonomi suatu negara **tidak dapat bergantung pada satu indikator saja**,
+melainkan harus membaca GDP, GDP per kapita, dan GDP Growth secara bersamaan.
+""")
+
 
 # ======================================================
 # 11. CATATAN AKADEMIK
