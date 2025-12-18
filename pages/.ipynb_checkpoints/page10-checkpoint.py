@@ -250,6 +250,55 @@ with col_bot:
     st.markdown("**Bottom 10 (terendah)**")
     st.table(agg_latest.tail(10).sort_values("latest_value", ascending=True).style.format({"latest_value": "{:,.2f}"}))
 
+
+# -----------------------------
+# ANALISIS DATA (INTERPRETASI)
+# -----------------------------
+st.subheader("🧠 Analisis Data & Interpretasi")
+
+top_countries = agg_latest.head(5)["country"].tolist()
+bottom_countries = agg_latest.tail(5)["country"].tolist()
+
+st.markdown(f"""
+### 🔍 Temuan Utama
+
+**1. Negara dengan emisi CO₂ tertinggi**  
+Berdasarkan nilai emisi terbaru, negara-negara seperti **{", ".join(top_countries[:3])}** 
+berada pada kelompok teratas. Negara-negara ini umumnya memiliki:
+- **industri dan manufaktur** yang kuat
+- Konsumsi energi fosil yang besar
+- Aktivitas ekonomi yang berskala besar
+
+Hal ini menunjukkan bahwa **tingkat industrialisasi berkorelasi positif dengan emisi karbon**.
+
+**2. Negara dengan emisi CO₂ terendah**  
+Sebaliknya, negara seperti **{", ".join(bottom_countries[:3])}** berada pada kelompok terbawah.
+Karakteristik umumnya meliputi:
+- Struktur ekonomi yang **kurang terindustrialisasi**
+- Konsumsi energi relatif rendah
+- Skala produksi dan transportasi yang lebih kecil
+
+**3. Dinamika waktu (Time Series)**  
+Grafik time series menunjukkan bahwa emisi CO₂ cenderung **meningkat dalam jangka panjang** 
+pada negara-negara berkembang dan industri, meskipun terdapat fluktuasi antar tahun. 
+Fluktuasi ini dapat dipengaruhi oleh:
+- Krisis ekonomi
+- Perubahan kebijakan energi
+- Transisi menuju energi terbarukan
+
+**4. Catatan penting terkait data**  
+Meskipun indikator diberi label *per capita*, besarnya nilai menunjukkan bahwa data ini 
+merepresentasikan **total emisi CO₂ nasional**, bukan emisi per individu.  
+Oleh karena itu, interpretasi difokuskan pada **skala aktivitas ekonomi dan industri**, 
+bukan perilaku individu.
+""")
+
+st.info(
+    "💡 Insight kebijakan: Negara dengan emisi tinggi perlu mendorong transisi energi bersih, "
+    "efisiensi industri, dan pengembangan energi terbarukan untuk menekan pertumbuhan emisi di masa depan."
+)
+
+
 # -----------------------------
 # Download Full Data (long)
 # -----------------------------
