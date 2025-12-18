@@ -133,8 +133,6 @@ st.divider()
 # -----------------------------------------------------------------------------
 st.subheader("🎯 Prioritas Strategis & Scorecard Dampak")
 
-tab1, tab2 = st.tabs(["5 Prioritas Utama", "Scorecard Dampak Terpilih"])
-
 with tab1:
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
@@ -150,7 +148,15 @@ with tab1:
         st.info("**Perlindungan Sosial**")
         st.caption("Mencapai 500 juta orang miskin & rentan.")
     with c5:
-        st.primary("**Pemberdayaan Wanita**")
+        # PERBAIKAN DI SINI: Mengganti st.primary menjadi st.markdown dengan background
+        st.markdown(
+            """
+            <div style="background-color:#f0f2f6;padding:10px;border-radius:5px;border:1px solid #d1d5db;">
+                <strong style="color:#0071bc;">Pemberdayaan Wanita</strong>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
         st.caption("Akses broadband untuk 300 juta wanita.")
 
 with tab2:
