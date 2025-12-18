@@ -229,6 +229,140 @@ with right:
     st.table(agg.tail(10).sort_values("latest_value", ascending=True).style.format({"latest_value": "{:,.2f}"}))
 
 # -----------------------------
+# ANALISIS KESEHATAN TERPADU
+# -----------------------------
+st.subheader("🧠 Analisis Kesehatan Terpadu")
+
+
+# Asumsi df_health sudah long format:
+# kolom: country | year | value | indicator
+
+# pisahkan indikator
+df_pivot = df_long.pivot_table(
+    index=["country", "year"],
+    columns="indicator",
+    values="value"
+).reset_index()
+
+# pilih tahun terbaru
+latest_year = df_pivot["year"].max()
+df_latest = df_pivot[df_pivot["year"] == latest_year].dropna()
+
+# normalisasi (min-max)
+def minmax(series, inverse=False):
+    s = (series - series.min()) / (series.max() - series.min())
+    return 1 - s if inverse else s
+
+df_latest["health_exp_n"] = minmax(df_latest["Health Expenditure"])
+df_latest["water_n"] = minmax(df_latest["Drinking Water"])
+df_latest["infant_n"] = minmax(df_latest["Infant Mortality"], inverse=True)
+df_latest["maternal_n"] = minmax(df_latest["Maternal Mortality"], inverse=True)
+
+# skor kesehatan komposit
+df_latest["Health_Index"] = (
+    df_latest["health_exp_n"] +
+    df_latest["water_n"] +
+    df_latest["infant_n"] +
+    df_latest["maternal_n"]
+) / 4
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("### 🟢 Negara dengan Kinerja Kesehatan Terbaik")
+    st.dataframe(
+        df_latest.sort_values("Health_Index", ascending=False)
+        [["country", "Health_Index"]]
+        .head(10),
+        use_container_width=True
+    )
+
+with col2:
+    st.markdown("### 🔴 Negara dengan Krisis Kesehatan")
+    st.dataframe(
+        df_latest.sort_values("Health_Index")
+        [["country", "Health_Index"]]
+        .head(10),
+        use_container_width=True
+    )
+
+st.markdown("""
+### A. Gambaran Umum Kesehatan Global
+
+Analisis kesehatan ini mengintegrasikan empat indikator utama, yaitu:
+1. **Health Expenditure**
+2. **Infant Mortality Rate**
+3. **Maternal Mortality Ratio**
+4. **Access to Safely Managed Drinking Water**
+
+Keempat indikator tersebut digunakan untuk memberikan gambaran menyeluruh
+tentang kapasitas sistem kesehatan, kualitas layanan dasar, dan kondisi kesehatan masyarakat
+di berbagai negara.
+""")
+    
+st.markdown("""
+### B. Health Expenditure
+
+Berdasarkan statistik terbaru, negara-negara dengan **pengeluaran kesehatan tertinggi**
+seperti *United States* dan beberapa negara berpendapatan tinggi
+menunjukkan kapasitas fiskal yang besar dalam membiayai sektor kesehatan.
+
+Namun, tingginya belanja kesehatan **tidak selalu berbanding lurus**
+dengan hasil kesehatan yang optimal, karena efektivitas belanja,
+ketimpangan akses, dan efisiensi sistem pelayanan juga berperan penting.
+""")
+
+st.markdown("""
+### C. Infant Mortality
+
+Negara-negara dengan **tingkat kematian bayi tertinggi**
+didominasi oleh negara berpendapatan rendah dan wilayah konflik,
+seperti *South Sudan*, *Somalia*, dan *Nigeria*.
+
+Tingginya angka kematian bayi mencerminkan
+keterbatasan akses layanan kesehatan dasar,
+kekurangan tenaga medis,
+serta kondisi gizi dan sanitasi yang buruk.
+""")
+
+st.markdown("""
+### D. Maternal Mortality
+
+Pola yang serupa juga terlihat pada indikator kematian ibu.
+Negara-negara Afrika Sub-Sahara mendominasi kelompok dengan
+rasio kematian ibu tertinggi.
+
+Hal ini menunjukkan lemahnya sistem kesehatan maternal,
+terbatasnya fasilitas persalinan yang aman,
+serta rendahnya cakupan layanan kesehatan reproduksi.
+""")
+
+st.markdown("""
+### E. Akses Air Minum Layak
+
+Sebaliknya, negara-negara maju seperti *Singapore*, *New Zealand*,
+dan beberapa negara Eropa menunjukkan
+akses air minum layak yang hampir universal.
+
+Akses air bersih berperan penting dalam menurunkan risiko penyakit menular,
+kematian bayi, serta meningkatkan kualitas kesehatan masyarakat secara keseluruhan.
+""")
+
+st.markdown("""
+### F. Kesimpulan Analisis Kesehatan Terpadu
+
+Hasil analisis menunjukkan bahwa kualitas kesehatan suatu negara
+merupakan hasil interaksi antara **kapasitas fiskal**, **kualitas layanan kesehatan**,
+serta **ketersediaan infrastruktur dasar** seperti air bersih.
+
+Negara dengan konflik berkepanjangan dan kemiskinan struktural
+cenderung mengalami kegagalan lintas indikator kesehatan,
+sementara negara dengan tata kelola dan infrastruktur yang baik
+mampu mencapai hasil kesehatan yang lebih optimal.
+""")
+
+
+# -----------------------------
 # Download
 # -----------------------------
 st.subheader("📥 Ekspor Data (long format)")
