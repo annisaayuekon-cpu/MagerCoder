@@ -231,100 +231,70 @@ with right:
 # -----------------------------
 # ANALISIS KESEHATAN TERPADU
 # -----------------------------
+# AUTO ANALISIS DINAMIS
+# -----------------------------
 st.subheader("🧠 Analisis Kesehatan Terpadu")
 
-st.markdown(f"""
-### Interpretasi Indikator Kesehatan
+top_countries = agg.head(5)["country"].tolist()
+bottom_countries = agg.tail(5)["country"].tolist()
 
-Berdasarkan nilai terbaru indikator **{indicator}**, terlihat adanya kesenjangan kesehatan yang signifikan antar negara.
+indicator_lower = indicator.lower()
 
-**Negara dengan nilai tertinggi** seperti **{", ".join(top_countries)}** umumnya mencerminkan:
-- kondisi kesehatan yang lebih buruk *(untuk mortality)*  
-  **atau**
-- kapasitas pembiayaan kesehatan yang besar *(untuk health expenditure)*
+# ===== TEMPLATE ANALISIS =====
+if "health expenditure" in indicator_lower:
+    analysis_text = f"""
+Berdasarkan **{indicator}**, negara dengan pengeluaran kesehatan tertinggi seperti
+**{", ".join(top_countries)}** menunjukkan kapasitas fiskal yang relatif besar
+dalam membiayai sektor kesehatan.
 
-Sebaliknya, **negara dengan nilai terendah** seperti **{", ".join(bottom_countries)}** menunjukkan:
-- sistem kesehatan yang relatif lebih efektif  
-- atau tingkat akses layanan kesehatan dasar yang lebih baik
+Namun, tingginya belanja kesehatan **tidak selalu mencerminkan hasil kesehatan yang lebih baik**,
+karena dipengaruhi oleh efisiensi sistem, struktur pembiayaan, dan ketimpangan akses layanan.
 
-Perbedaan ini menegaskan bahwa capaian kesehatan sangat dipengaruhi oleh
-kapasitas fiskal, stabilitas sosial, serta kualitas tata kelola sistem kesehatan.
-""")
+Sebaliknya, negara dengan pengeluaran lebih rendah seperti **{", ".join(bottom_countries)}**
+sering kali memiliki sistem kesehatan yang lebih efisien atau beban biaya layanan yang lebih terkendali.
+"""
 
-st.markdown("""
-### A. Gambaran Umum Kesehatan Global
+elif "infant mortality" in indicator_lower:
+    analysis_text = f"""
+Indikator **{indicator}** menunjukkan bahwa negara dengan angka kematian bayi tertinggi
+seperti **{", ".join(top_countries)}** umumnya menghadapi keterbatasan layanan kesehatan dasar,
+masalah gizi, sanitasi yang buruk, serta kondisi sosial ekonomi yang rentan.
 
-Analisis kesehatan ini mengintegrasikan empat indikator utama, yaitu:
-1. **Health Expenditure**
-2. **Infant Mortality Rate**
-3. **Maternal Mortality Ratio**
-4. **Access to Safely Managed Drinking Water**
+Sebaliknya, negara dengan angka terendah seperti **{", ".join(bottom_countries)}**
+mencerminkan keberhasilan sistem kesehatan ibu dan anak,
+serta akses layanan medis dan nutrisi yang lebih baik.
+"""
 
-Keempat indikator tersebut digunakan untuk memberikan gambaran menyeluruh
-tentang kapasitas sistem kesehatan, kualitas layanan dasar, dan kondisi kesehatan masyarakat
-di berbagai negara.
-""")
-    
-st.markdown("""
-### B. Health Expenditure
+elif "maternal mortality" in indicator_lower:
+    analysis_text = f"""
+Pada indikator **{indicator}**, negara dengan rasio kematian ibu tertinggi
+seperti **{", ".join(top_countries)}** umumnya memiliki keterbatasan fasilitas persalinan,
+rendahnya cakupan tenaga medis terlatih, dan akses layanan kesehatan reproduksi yang terbatas.
 
-Berdasarkan statistik terbaru, negara-negara dengan **pengeluaran kesehatan tertinggi**
-seperti *United States* dan beberapa negara berpendapatan tinggi
-menunjukkan kapasitas fiskal yang besar dalam membiayai sektor kesehatan.
+Negara dengan rasio terendah seperti **{", ".join(bottom_countries)}**
+menunjukkan sistem kesehatan maternal yang lebih kuat dan merata.
+"""
 
-Namun, tingginya belanja kesehatan **tidak selalu berbanding lurus**
-dengan hasil kesehatan yang optimal, karena efektivitas belanja,
-ketimpangan akses, dan efisiensi sistem pelayanan juga berperan penting.
-""")
+elif "drinking water" in indicator_lower or "water" in indicator_lower:
+    analysis_text = f"""
+Untuk indikator **{indicator}**, negara dengan akses tertinggi seperti
+**{", ".join(top_countries)}** umumnya memiliki infrastruktur dasar yang sangat baik,
+terutama dalam penyediaan air bersih dan sanitasi.
 
-st.markdown("""
-### C. Infant Mortality
+Sebaliknya, negara dengan akses terendah seperti **{", ".join(bottom_countries)}**
+menghadapi keterbatasan infrastruktur yang berdampak langsung pada kesehatan masyarakat,
+khususnya peningkatan risiko penyakit menular dan kematian bayi.
+"""
 
-Negara-negara dengan **tingkat kematian bayi tertinggi**
-didominasi oleh negara berpendapatan rendah dan wilayah konflik,
-seperti *South Sudan*, *Somalia*, dan *Nigeria*.
+else:
+    analysis_text = f"""
+Indikator **{indicator}** menunjukkan adanya perbedaan capaian kesehatan yang signifikan
+antar negara. Negara dengan nilai tertinggi seperti **{", ".join(top_countries)}**
+dan negara dengan nilai terendah seperti **{", ".join(bottom_countries)}**
+mencerminkan ketimpangan kapasitas sistem kesehatan dan infrastruktur dasar.
+"""
 
-Tingginya angka kematian bayi mencerminkan
-keterbatasan akses layanan kesehatan dasar,
-kekurangan tenaga medis,
-serta kondisi gizi dan sanitasi yang buruk.
-""")
-
-st.markdown("""
-### D. Maternal Mortality
-
-Pola yang serupa juga terlihat pada indikator kematian ibu.
-Negara-negara Afrika Sub-Sahara mendominasi kelompok dengan
-rasio kematian ibu tertinggi.
-
-Hal ini menunjukkan lemahnya sistem kesehatan maternal,
-terbatasnya fasilitas persalinan yang aman,
-serta rendahnya cakupan layanan kesehatan reproduksi.
-""")
-
-st.markdown("""
-### E. Akses Air Minum Layak
-
-Sebaliknya, negara-negara maju seperti *Singapore*, *New Zealand*,
-dan beberapa negara Eropa menunjukkan
-akses air minum layak yang hampir universal.
-
-Akses air bersih berperan penting dalam menurunkan risiko penyakit menular,
-kematian bayi, serta meningkatkan kualitas kesehatan masyarakat secara keseluruhan.
-""")
-
-st.markdown("""
-### F. Kesimpulan Analisis Kesehatan Terpadu
-
-Hasil analisis menunjukkan bahwa kualitas kesehatan suatu negara
-merupakan hasil interaksi antara **kapasitas fiskal**, **kualitas layanan kesehatan**,
-serta **ketersediaan infrastruktur dasar** seperti air bersih.
-
-Negara dengan konflik berkepanjangan dan kemiskinan struktural
-cenderung mengalami kegagalan lintas indikator kesehatan,
-sementara negara dengan tata kelola dan infrastruktur yang baik
-mampu mencapai hasil kesehatan yang lebih optimal.
-""")
+st.markdown(analysis_text)
 
 
 # -----------------------------
