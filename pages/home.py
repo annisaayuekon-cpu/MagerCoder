@@ -35,6 +35,22 @@ st.markdown("""
 # --- 3. PENGATURAN DATA ---
 DATA_FOLDER = "data"
 
+# Daftar Entitas Agregat (Bukan Negara) yang ingin dihapus
+EXCLUDED_ENTITIES = [
+    "World", "IDA & IBRD total", "Low & middle income", "Middle income", 
+    "IBRD only", "IDA total", "Upper middle income", "East Asia & Pacific", 
+    "Europe & Central Asia", "Latin America & Caribbean", "Middle East & North Africa", 
+    "North America", "South Asia", "Sub-Saharan Africa", "High income", 
+    "Lower middle income", "Euro area", "OECD members", "European Union", 
+    "Arab World", "Central Europe and the Baltics", "Early-demographic dividend", 
+    "East Asia & Pacific (excluding high income)", "Europe & Central Asia (excluding high income)", 
+    "Fragile and conflict affected situations", "Heavily indebted poor countries (HIPC)", 
+    "Latin America & Caribbean (excluding high income)", "Least developed countries: UN classification", 
+    "Middle East & North Africa (excluding high income)", "Other small states", 
+    "Pacific island small states", "Post-demographic dividend", "Pre-demographic dividend", 
+    "Small states", "Sub-Saharan Africa (excluding high income)", "IDA blend", "IDA only"
+]
+
 FILES_STRUCTURE = {
     "1. Ekonomi Makro": {
         "GDP (Current US$)": "1.1. GDP (CURRENT US$).csv",
@@ -96,31 +112,22 @@ def load_and_clean_data(filename):
     filepath = os.path.join(DATA_FOLDER, filename)
     if not os.path.exists(filepath): return None
     
-    # --- LOGIKA BARU: AUTO-DETECT HEADER & DELIMITER ---
-    # Kita akan mencoba membaca file dengan berbagai kemungkinan baris header (0, 1, 2, atau 3)
-    # dan berbagai delimiter (; atau ,) sampai menemukan kombinasi yang benar.
-    
     found_df = None
     
-    # Coba berbagai kombinasi
-    for header_idx in [0, 1, 2, 3]: # Cek baris 1 sampai 4
+    # Coba berbagai kombinasi header dan separator
+    for header_idx in [0, 1, 2, 3]: 
         for sep in [';', ',']:
             try:
-                # Baca calon dataframe
                 temp_df = pd.read_csv(filepath, sep=sep, header=header_idx)
-                
-                # Bersihkan nama kolom
                 temp_df.columns = temp_df.columns.astype(str).str.strip()
                 
-                # KRITERIA SUKSES: 
-                # Harus ada kolom 'Country Name' (atau mirip) DAN ada setidaknya satu kolom Tahun (angka 4 digit)
                 has_country = any(col.lower() in ['country name', 'country', 'economy'] for col in temp_df.columns)
                 has_year_col = any(col.isdigit() and len(col) == 4 for col in temp_df.columns)
-                has_year_val = 'Year' in temp_df.columns # Kasus jika file sudah format Long
+                has_year_val = 'Year' in temp_df.columns 
                 
                 if has_country and (has_year_col or has_year_val):
                     found_df = temp_df
-                    break # Ketemu! Berhenti mencari
+                    break 
             except:
                 continue
         if found_df is not None:
@@ -132,38 +139,36 @@ def load_and_clean_data(filename):
         
     df = found_df
     
-    # --- PROSES CLEANING (SAMA SEPERTI SEBELUMNYA) ---
     try:
-        # KASUS 1: DATA SUDAH RAPI (Ada kolom 'Year') - Contoh: CO2
+        # Standardisasi nama kolom negara jika ada
+        for c in df.columns:
+            if c.lower() in ['country name', 'country', 'economy']:
+                df = df.rename(columns={c: 'Country Name'})
+                break
+
+        # KASUS 1: DATA SUDAH RAPI (Ada kolom 'Year')
         if 'Year' in df.columns:
-            metadata_cols = ['Country Name', 'Country Code', 'Year', 'Unnamed: 0']
-            value_cols = [c for c in df.columns if c not in metadata_cols]
-            
-            if value_cols:
-                df = df.rename(columns={value_cols[0]: 'Value'})
+            # Pastikan kolom Value ada
+            if 'Value' not in df.columns:
+                # Cari kolom selain metadata
+                metadata_cols = ['Country Name', 'Country Code', 'Year', 'Unnamed: 0']
+                value_cols = [c for c in df.columns if c not in metadata_cols]
+                if value_cols:
+                    df = df.rename(columns={value_cols[0]: 'Value'})
             
             df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
             df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
             return df.dropna(subset=['Value'])
 
-        # KASUS 2: DATA MELEBAR (Perlu di-MELT) - Contoh: GDP, Labor
+        # KASUS 2: DATA MELEBAR (Perlu di-MELT)
         else:
-            # Standarisasi nama kolom negara
-            # Cari kolom yang mengandung 'Country Name' dan rename jadi standar
-            for c in df.columns:
-                if 'country name' in c.lower():
-                    df = df.rename(columns={c: 'Country Name'})
-                    break
-            
             year_cols = [c for c in df.columns if c.isdigit() and len(c) == 4]
             if not year_cols:
                 return None
             
             id_vars = [c for c in df.columns if c not in year_cols]
             
-            # Melt
             df_melted = df.melt(id_vars=id_vars, value_vars=year_cols, var_name='Year', value_name='Value')
-            
             df_melted['Year'] = pd.to_numeric(df_melted['Year'], errors='coerce')
             df_melted['Value'] = pd.to_numeric(df_melted['Value'], errors='coerce')
             
@@ -199,6 +204,14 @@ df = load_and_clean_data(selected_filename)
 if df is not None and not df.empty:
     if 'Year' in df.columns and 'Value' in df.columns:
         
+        # --- FITUR BARU: FILTER ENTITAS UNTUK EKONOMI MAKRO ---
+        # Jika kategori yang dipilih adalah Ekonomi Makro, buang baris yang merupakan agregat wilayah
+        if selected_category == "1. Ekonomi Makro":
+            if 'Country Name' in df.columns:
+                # Filter rows where Country Name is NOT in EXCLUDED_ENTITIES
+                df = df[~df['Country Name'].isin(EXCLUDED_ENTITIES)]
+                st.info("ℹ️ Data telah difilter: Menampilkan hanya negara (Regional/World aggregates disembunyikan).")
+
         # Filter Tahun
         df_filtered = df[(df['Year'] >= year_range[0]) & (df['Year'] <= year_range[1])]
         
@@ -208,7 +221,7 @@ if df is not None and not df.empty:
             latest_year_in_data = df_filtered['Year'].max()
             df_latest = df_filtered[df_filtered['Year'] == latest_year_in_data]
             
-            # Tentukan kolom Nama Negara (Bisa 'Country Name' atau kolom pertama)
+            # Tentukan kolom Nama Negara
             country_col = 'Country Name' if 'Country Name' in df_latest.columns else df_latest.columns[0]
 
             # --- KPI CARDS ---
@@ -221,17 +234,17 @@ if df is not None and not df.empty:
             else:
                 top_name, top_val = "-", 0
             
-            val_sum = df_latest['Value'].sum() # Relevan untuk CO2 total, Populasi, GDP
+            val_sum = df_latest['Value'].sum() 
             
             st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-card card-blue">
                     <div class="metric-value">{total_countries}</div>
-                    <div class="metric-label">Countries ({latest_year_in_data})</div>
+                    <div class="metric-label">Entities/Countries ({latest_year_in_data})</div>
                 </div>
                 <div class="metric-card card-green">
                     <div class="metric-value">{avg_val:,.2f}</div>
-                    <div class="metric-label">Global Average</div>
+                    <div class="metric-label">Average</div>
                 </div>
                 <div class="metric-card card-orange">
                     <div class="metric-value">{str(top_name)[:15]}..</div>
@@ -239,7 +252,7 @@ if df is not None and not df.empty:
                 </div>
                 <div class="metric-card card-red">
                     <div class="metric-value">{val_sum:,.0f}</div>
-                    <div class="metric-label">Global Sum</div>
+                    <div class="metric-label">Total Sum</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -249,6 +262,7 @@ if df is not None and not df.empty:
             
             with c_left:
                 st.markdown('<div class="section-title">Trends Over Time (Top 5)</div>', unsafe_allow_html=True)
+                # Ambil top 5 berdasarkan nilai tahun terakhir
                 top_5 = df_latest.nlargest(5, 'Value')[country_col].tolist()
                 df_trend = df_filtered[df_filtered[country_col].isin(top_5)]
                 
@@ -271,12 +285,15 @@ if df is not None and not df.empty:
             with col_map:
                 # Cek kode negara untuk peta
                 code_col = 'Country Code' if 'Country Code' in df_latest.columns else None
-                if code_col:
-                    fig_map = px.choropleth(df_latest, locations=code_col, color="Value", hover_name=country_col, color_continuous_scale="Blues")
-                    fig_map.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-                    st.plotly_chart(fig_map, use_container_width=True)
+                
+                # Jika tidak ada Country Code, kita coba mapping berdasarkan nama negara
+                if not code_col:
+                    fig_map = px.choropleth(df_latest, locations=country_col, locationmode="country names", color="Value", hover_name=country_col, color_continuous_scale="Blues")
                 else:
-                    st.info("Peta tidak tersedia (Kolom 'Country Code' tidak ditemukan).")
+                    fig_map = px.choropleth(df_latest, locations=code_col, color="Value", hover_name=country_col, color_continuous_scale="Blues")
+                
+                fig_map.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+                st.plotly_chart(fig_map, use_container_width=True)
             
             with col_dist:
                 try:
