@@ -233,9 +233,6 @@ with right:
 # -----------------------------
 st.subheader("🧠 Analisis Kesehatan Terpadu")
 
-top_countries = agg_latest.sort_values("latest_value", ascending=False).head(5)["country"].tolist()
-bottom_countries = agg_latest.sort_values("latest_value").head(5)["country"].tolist()
-
 st.markdown(f"""
 ### Interpretasi Indikator Kesehatan
 
