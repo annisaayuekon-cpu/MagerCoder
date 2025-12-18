@@ -233,58 +233,26 @@ with right:
 # -----------------------------
 st.subheader("🧠 Analisis Kesehatan Terpadu")
 
+top_countries = agg_latest.sort_values("latest_value", ascending=False).head(5)["country"].tolist()
+bottom_countries = agg_latest.sort_values("latest_value").head(5)["country"].tolist()
 
-# Asumsi df_health sudah long format:
-# kolom: country | year | value | indicator
+st.markdown(f"""
+### Interpretasi Indikator Kesehatan
 
-# pisahkan indikator
-df_pivot = df_long.pivot_table(
-    index=["country", "year"],
-    columns="indicator",
-    values="value"
-).reset_index()
+Berdasarkan nilai terbaru indikator **{indicator}**, terlihat adanya kesenjangan kesehatan yang signifikan antar negara.
 
-# pilih tahun terbaru
-latest_year = df_pivot["year"].max()
-df_latest = df_pivot[df_pivot["year"] == latest_year].dropna()
+**Negara dengan nilai tertinggi** seperti **{", ".join(top_countries)}** umumnya mencerminkan:
+- kondisi kesehatan yang lebih buruk *(untuk mortality)*  
+  **atau**
+- kapasitas pembiayaan kesehatan yang besar *(untuk health expenditure)*
 
-# normalisasi (min-max)
-def minmax(series, inverse=False):
-    s = (series - series.min()) / (series.max() - series.min())
-    return 1 - s if inverse else s
+Sebaliknya, **negara dengan nilai terendah** seperti **{", ".join(bottom_countries)}** menunjukkan:
+- sistem kesehatan yang relatif lebih efektif  
+- atau tingkat akses layanan kesehatan dasar yang lebih baik
 
-df_latest["health_exp_n"] = minmax(df_latest["Health Expenditure"])
-df_latest["water_n"] = minmax(df_latest["Drinking Water"])
-df_latest["infant_n"] = minmax(df_latest["Infant Mortality"], inverse=True)
-df_latest["maternal_n"] = minmax(df_latest["Maternal Mortality"], inverse=True)
-
-# skor kesehatan komposit
-df_latest["Health_Index"] = (
-    df_latest["health_exp_n"] +
-    df_latest["water_n"] +
-    df_latest["infant_n"] +
-    df_latest["maternal_n"]
-) / 4
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("### 🟢 Negara dengan Kinerja Kesehatan Terbaik")
-    st.dataframe(
-        df_latest.sort_values("Health_Index", ascending=False)
-        [["country", "Health_Index"]]
-        .head(10),
-        use_container_width=True
-    )
-
-with col2:
-    st.markdown("### 🔴 Negara dengan Krisis Kesehatan")
-    st.dataframe(
-        df_latest.sort_values("Health_Index")
-        [["country", "Health_Index"]]
-        .head(10),
-        use_container_width=True
-    )
+Perbedaan ini menegaskan bahwa capaian kesehatan sangat dipengaruhi oleh
+kapasitas fiskal, stabilitas sosial, serta kualitas tata kelola sistem kesehatan.
+""")
 
 st.markdown("""
 ### A. Gambaran Umum Kesehatan Global
