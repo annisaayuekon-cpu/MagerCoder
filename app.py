@@ -28,7 +28,7 @@ pages = [
     st.Page(page="pages/page8.py",  title="Pendidikan",                         icon="🎓"),
     st.Page(page="pages/page9.py",  title="Kesehatan",                          icon="🏥"),
     st.Page(page="pages/page10.py", title="Energi & Lingkungan",                icon="🌱"),
-    st.Page(page="pages/page11.py", title="Analisis World Bank 2025",           icon="📘"),
+    st.Page(page="pages/page11.py", title="World Bank 2024",           icon="📘"),
 ]
 
 # -----------------------------
