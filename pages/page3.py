@@ -443,7 +443,7 @@ else:
         if avg_change > 0:
             st.markdown(
                 "Tren meningkat mengarah pada penguatan tekanan harga pada periode pengamatan. "
-                "Pembacaan yang rapi biasanya mengaitkan pola ini dengan shock harga, kurs, dan respons kebijakan."
+                "Cara membacanya adalah mengaitkan pola ini dengan shock harga, kurs, dan respons kebijakan."
             )
         elif avg_change < 0:
             st.markdown(
@@ -452,7 +452,7 @@ else:
             )
         else:
             st.markdown(
-                "Nilai relatif stabil pada periode pengamatan. Variasi kecil tetap bisa bermakna jika level awalnya tinggi."
+                "Nilai relatif stabil pada periode pengamatan. Variasi kecil tetap bisa diartikan berdampak kalau starting point-nya tinggi."
             )
     else:
         if avg_change > 0:
@@ -463,11 +463,11 @@ else:
         elif avg_change < 0:
             st.markdown(
                 "Tren menurun menunjukkan pelemahan pengeluaran konsumsi pada periode pengamatan. "
-                "Pembacaan biasanya dikaitkan dengan siklus ekonomi, pendapatan riil, dan kondisi pembiayaan."
+                "Tren bisa dibaca dengan membandingkan kepada siklus ekonomi, pendapatan riil, dan kondisi pembiayaan."
             )
         else:
             st.markdown(
-                "Nilai relatif stabil pada periode pengamatan. Pola sebelum dan sesudah guncangan besar dapat memberi konteks tambahan jika tahun tersedia."
+                "Nilai relatif stabil pada periode pengamatan. Pola sebelum dan sesudah guncangan besar dapat dijadikan pertimbangan dengan membandingkan dengan tahun tersebut."
             )
 
     st.dataframe(df_country.reset_index(drop=True))
