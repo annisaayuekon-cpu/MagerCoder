@@ -28,7 +28,10 @@ pages = [
     st.Page(page="pages/page8.py",  title="Pendidikan",                         icon="🎓"),
     st.Page(page="pages/page9.py",  title="Kesehatan",                          icon="🏥"),
     st.Page(page="pages/page10.py", title="Energi & Lingkungan",                icon="🌱"),
+<<<<<<< HEAD
     st.Page(page="pages/page11.py", title="World Bank 2024",           icon="📘"),
+=======
+>>>>>>> 0e1f66e (update page5 plis)
 ]
 
 # -----------------------------
