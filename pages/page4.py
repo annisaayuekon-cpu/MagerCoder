@@ -49,22 +49,13 @@ def load_csv_tolerant(path: str) -> pd.DataFrame:
     """
     for sep in [";", ",", "\t"]:
         try:
-            df = pd.read_csv(
-                path,
-                sep=sep,
-                engine="python",
-                on_bad_lines="skip"
-            )
+            df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
             if df.shape[1] > 1:
                 return df
         except Exception:
             continue
 
-    df = pd.read_csv(
-        path,
-        engine="python",
-        on_bad_lines="skip"
-    )
+    df = pd.read_csv(path, engine="python", on_bad_lines="skip")
     return df
 
 
@@ -113,6 +104,60 @@ def _interpret_note(label: str) -> str:
             "Angka ini lebih informatif jika dibaca bersama ukuran ekonomi dan komposisi sektor."
         )
     return "Interpretasi bersifat indikatif dan perlu dibaca bersama konteks statistik dan struktur ekonomi negara."
+
+
+# -----------------------------------------------------------------------------
+# Filter entitas agregat (regional/income group/multilateral) untuk interpretasi
+# -----------------------------------------------------------------------------
+AGG_EXACT = {
+    "World",
+    "European Union",
+    "Euro area",
+    "OECD members",
+    "OECD: High income",
+    "IDA & IBRD total",
+    "IBRD only",
+    "IDA total",
+    "IDA blend",
+    "IDA only",
+    "Heavily indebted poor countries (HIPC)",
+    "Least developed countries: UN classification",
+    "Fragile and conflict affected situations",
+}
+
+AGG_SUBSTR = [
+    " income",  # high/low/lower middle/upper middle income
+    "ida", "ibrd", "hipc",
+    "oecd", "euro area", "european union",
+    "arab world",
+    "central europe and the baltics",
+    "east asia & pacific",
+    "europe & central asia",
+    "latin america & caribbean",
+    "middle east & north africa",
+    "north america",
+    "south asia",
+    "sub-saharan africa",
+    "small states",
+    "developing",
+    "dividend",
+]
+
+def is_aggregate_entity(name: str) -> bool:
+    if not isinstance(name, str):
+        return True
+    n = name.strip()
+    if n in AGG_EXACT:
+        return True
+    # banyak agregat WDI pakai "&" untuk region
+    if " & " in n:
+        return True
+    n_low = n.lower()
+    for token in AGG_SUBSTR:
+        if token in n_low:
+            return True
+    return False
+
 
 # -----------------------------
 # Cek file yang tersedia
@@ -179,7 +224,7 @@ df_long = df.melt(
 df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce").astype("Int64")
 df_long = df_long.rename(columns={country_col: "country"})
 
-# Bersihkan format angka (mis. 55,00 -> 55.00) tanpa merusak angka yang sudah pakai titik
+# Bersihkan format angka
 s = df_long["value"].astype(str).str.strip()
 
 # Jika ada koma tapi tidak ada titik, anggap koma sebagai desimal
@@ -210,7 +255,7 @@ selected_year = st.slider(
     "Pilih tahun untuk peta dunia", year_min, year_max, year_max
 )
 
-df_map = df_long[df_long["year"] == selected_year]
+df_map = df_long[df_long["year"] == selected_year].copy()
 
 st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
 
@@ -238,11 +283,13 @@ else:
         )
 
 # -----------------------------------------------------------------------------
-# INTERPRETASI PETA
+# INTERPRETASI PETA (pakai df_map_clean untuk kuartil/top-bottom)
 # -----------------------------------------------------------------------------
 st.subheader("🧠 Interpretasi peta (tahun terpilih)")
 
-vals = df_map["value"].dropna()
+df_map_clean = df_map[~df_map["country"].apply(is_aggregate_entity)].copy()
+
+vals = df_map_clean["value"].dropna()
 n_countries = int(vals.shape[0])
 
 if n_countries < 5:
@@ -291,32 +338,39 @@ Ringkasan kuartil memecah negara menjadi empat kelompok pada tahun terpilih. Pak
     st.caption(_interpret_note(indicator_label))
 
 # -----------------------------------------------------------------------------
-# ANALISIS DESKRIPTIF
+# ANALISIS DESKRIPTIF (Top & Bottom pakai df_map_clean)
 # -----------------------------------------------------------------------------
 st.subheader("🧠 Analisis Ekonomi Deskriptif")
 
-if df_map.empty:
+if df_map_clean.empty:
     st.write("Analisis deskriptif membutuhkan data pada tahun yang dipilih.")
 else:
     df_rank = (
-        df_map[["country", "value"]]
+        df_map_clean[["country", "value"]]
         .dropna()
         .sort_values("value", ascending=False)
     )
 
     top_n = 5
     bottom_n = 5
-    top_c = df_rank.head(top_n)["country"].tolist()
-    bottom_c = df_rank.tail(bottom_n)["country"].tolist()
+
+    top_df = df_rank.head(top_n).copy()
+    bottom_pool = df_rank.tail(max(bottom_n * 3, bottom_n)).copy()
+    bottom_df = bottom_pool[~bottom_pool["country"].isin(top_df["country"])].tail(bottom_n)
+    if bottom_df.empty:
+        bottom_df = df_rank.tail(bottom_n)
+
+    top_c = top_df["country"].tolist()
+    bottom_c = bottom_df["country"].tolist()
 
     top_str = ", ".join(top_c) if top_c else "NA"
     bottom_str = ", ".join(bottom_c) if bottom_c else "NA"
 
-    vals = df_rank["value"]
-    vmin = float(vals.min())
-    vmax = float(vals.max())
-    q25, q50, q75 = vals.quantile([0.25, 0.50, 0.75]).tolist()
-    iqr = float(q75 - q25)
+    vals_rank = df_rank["value"]
+    vmin = float(vals_rank.min())
+    vmax = float(vals_rank.max())
+    q25r, q50r, q75r = vals_rank.quantile([0.25, 0.50, 0.75]).tolist()
+    iqr = float(q75r - q25r)
 
     st.markdown(
         f"""
@@ -325,7 +379,7 @@ Berdasarkan nilai terbaru **{indicator_label}** pada **{selected_year}**, terlih
 • **Kelompok nilai tertinggi didominasi oleh:** **{top_str}**  
 • **Kelompok nilai terendah didominasi oleh:** **{bottom_str}**
 
-Rentang nilai pada tahun ini bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)}**, dengan median **{_fmt(q50)}** dan rentang antar kuartil (Q3–Q1) sebesar **{_fmt(iqr)}**. Analisis ini bersifat deskriptif, tanpa inferensi kausal.
+Rentang nilai pada tahun ini bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)}**, dengan median **{_fmt(q50r)}** dan rentang antar kuartil (Q3–Q1) sebesar **{_fmt(iqr)}**. Analisis ini bersifat deskriptif, tanpa inferensi kausal.
 """
     )
 
