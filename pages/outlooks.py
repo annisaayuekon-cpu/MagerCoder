@@ -205,11 +205,11 @@ REF = {
     "members_partners": "https://www.oecd.org/en/about/members-partners.html",
     "oecd_indonesia_country": "https://www.oecd.org/en/countries/indonesia.html",
 
-    # Tambahan: pintu data OECD (buat konteks data, tanpa mengubah dashboard kamu)
+    # Tambahan: pintu data OECD
     "oecd_data_portal": "https://www.oecd.org/en/data.html",
 }
 
-# Optional PDF preview sources (yang sudah stabil di versi kamu sebelumnya)
+# Optional PDF preview sources (yang stabil)
 PDF_COVERS = {
     "OECD Economic Surveys: Indonesia 2024": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2024/11/oecd-economic-surveys-indonesia-2024_e3ab8960/de87555a-en.pdf",
     "Government at a Glance: Southeast Asia 2025": REF["gag_sea_2025_pdf"],
@@ -228,7 +228,7 @@ with h2:
         unsafe_allow_html=True,
     )
 
-# Quick chips (biar lebih “berisi” dan navigable)
+# Quick chips
 st.markdown(
     """
 <span class="chip">Makro & risiko global</span>
@@ -268,7 +268,7 @@ with tab1:
 
     st.markdown(
         """
-**Aksesi Indonesia ke OECD** membawa implikasi langsung pada praktik data. Proses aksesi bergerak lewat review teknis lintas komite, sehingga kebutuhan transparansi, konsistensi definisi, dan kualitas pelaporan cenderung makin terlihat sebagai prioritas. Data Indonesia juga makin sering dibaca sebagai bahan analisis OECD, terutama melalui produk seperti Economic Surveys dan berbagai publikasi tematik yang dipakai untuk peer review dan policy discussion. [1][2]
+**Aksesi Indonesia ke OECD** membawa implikasi langsung pada praktik data. Proses aksesi bergerak lewat review teknis lintas komite, sehingga kebutuhan transparansi, konsistensi definisi, dan kualitas pelaporan cenderung makin terlihat sebagai prioritas. Data Indonesia juga makin sering dibaca sebagai bahan analisis OECD, terutama melalui produk seperti Economic Surveys dan berbagai publikasi tematik yang dipakai untuk peer review dan policy discussion. [1][2][3]
 """
     )
 
@@ -320,60 +320,114 @@ Roadmap aksesi memberi urutan proses dan area kebijakan yang dinilai. Logika ker
         )
         st.link_button("Indonesia on OECD", REF["oecd_indonesia_country"])
 
+    # =========================================================
+    # KORESPONDENSI: langsung terlihat (bukan dropdown), warnanya menonjol
+    # =========================================================
     st.markdown('<hr class="hr">', unsafe_allow_html=True)
-
-    st.markdown("### Apa yang berubah saat aksesi berjalan (cara pikir interpretasi)")
+    st.markdown("### Korespondensi data World Bank dan OECD")
 
     st.markdown(
         """
-<div class="grid">
-  <div class="card c3" style="grid-column:span 6;">
-    <span class="badge">Definisi dan cakupan</span>
-    <h4>Angka harus sepadan sebelum dibandingkan</h4>
-    <div class="kecil">
-    Saat kamu membandingkan Indonesia dengan negara OECD, yang dicek pertama adalah kesetaraan definisi, coverage, dan konsistensi periode. Peta yang bagus tetap bisa menyesatkan jika definisinya tidak setara.
-    </div>
-  </div>
-  <div class="card c5" style="grid-column:span 6;">
-    <span class="badge">Evidence pipeline</span>
-    <h4>Angka jadi bahan review, bukan dekorasi</h4>
-    <div class="kecil">
-    Aksesi membuat data makin sering masuk ke diskusi kebijakan. Economic Surveys dan outlook menjadikan data sebagai bahan argumentasi. Ini mengubah standar narasi: interpretasi harus bisa ditelusuri, ringkas, dan konsisten.
-    </div>
-  </div>
-
-  <div class="card c1" style="grid-column:span 4;">
-    <span class="badge">Transparansi</span>
-    <h4>Data lebih mudah dilacak</h4>
-    <div class="kecil">Kebutuhan pelaporan mendorong metadata, definisi, dan sumber data lebih eksplisit.</div>
-  </div>
-  <div class="card c2" style="grid-column:span 4;">
-    <span class="badge">Komparabilitas</span>
-    <h4>Benchmark lebih tegas</h4>
-    <div class="kecil">OECD memberi vocabulary pembanding: gap, frontier, reform sequence, dan policy trade-off.</div>
-  </div>
-  <div class="card c4" style="grid-column:span 4;">
-    <span class="badge">Analisis OECD</span>
-    <h4>Indonesia dibaca lebih rutin</h4>
-    <div class="kecil">Data Indonesia punya peluang tampil lebih komprehensif karena kebutuhan pelaporan yang lebih terstruktur.</div>
+<div class="card c6">
+  <span class="badge">World Bank × OECD</span>
+  <h4>Keduanya saling berkorespondensi dalam ekosistem indikator global</h4>
+  <div class="kecil" style="margin-top:8px; line-height:1.7;">
+    World Bank melalui World Development Indicators berperan sebagai kompilator lintas sumber yang menyatukan statistik resmi dan statistik internasional agar mudah dipakai lintas negara.
+    OECD berperan sebagai produsen benchmark dan standar yang memperkuat keterbandingan indikator, lalu menerjemahkannya menjadi diagnosis kebijakan melalui peer review dan publikasi evidence.
+    Karena perannya berbeda namun saling melengkapi, banyak indikator yang kamu lihat di World Bank punya korespondensi konsep dengan indikator OECD, baik dari sisi definisi, cakupan, maupun cara menyikapi angkanya. [17][20]
+    <br><br>
+    Dalam konteks Indonesia yang sedang menjalani proses aksesi, korespondensi ini jadi lebih penting. Angka World Bank tetap berguna untuk peta cepat, sementara publikasi OECD membantu menguji konsistensi narasi, menajamkan benchmark, dan memaksa interpretasi lebih disiplin.
+    Praktiknya, OECD dipakai sebagai kacamata baca agar perubahan angka di World Bank tidak langsung ditarik menjadi kesimpulan sempit, melainkan dibaca bersama struktur ekonomi, institusi, dan risiko. [1][2][3]
   </div>
 </div>
 """,
         unsafe_allow_html=True,
     )
 
+    st.markdown(
+        """
+Korespondensi ini bukan berarti datanya selalu identik. World Bank menekankan seri yang konsisten dan mudah diakses untuk banyak negara dan banyak tahun. OECD menekankan keterlacakan metodologi dan pembacaan kebijakan berbasis peer review. Hubungan yang paling berguna adalah triangulasi: World Bank memberi posisi dan tren, OECD memberi pembanding, standar, dan narasi diagnosis yang bisa kamu pakai untuk menulis interpretasi yang stabil. [17][3][4]
+"""
+    )
+
+    st.markdown("#### Contoh korespondensi yang bisa dipakai di narasi interpretasi")
+    st.markdown(
+        """
+<div class="grid">
+  <div class="card c2" style="grid-column:span 6;">
+    <span class="badge">Makro</span>
+    <h4>GDP dan inflasi</h4>
+    <div class="kecil" style="line-height:1.7;">
+      World Bank menampilkan GDP dan proksi inflasi sebagai level dan tren.
+      OECD membaca angka yang sama dalam kerangka baseline, risiko global, dan diagnosis kebijakan melalui Economic Outlook dan Economic Surveys.
+      Korespondensinya ada pada pertanyaan yang sama: apakah pertumbuhan ditopang faktor yang bertahan, dan apakah inflasi bersifat sementara atau sudah menekan struktur biaya. [4][3]
+    </div>
+  </div>
+
+  <div class="card c5" style="grid-column:span 6;">
+    <span class="badge">Labor</span>
+    <h4>LFPR dan unemployment</h4>
+    <div class="kecil" style="line-height:1.7;">
+      World Bank memberi indikator partisipasi kerja dan pengangguran.
+      OECD menambahkan cara baca yang lebih tegas: slack, kualitas pekerjaan, dan implikasi demografi.
+      Korespondensinya terasa ketika kamu menulis arti “angka tinggi atau rendah” tanpa mengunci satu interpretasi tunggal. [6]
+    </div>
+  </div>
+
+  <div class="card c1" style="grid-column:span 4;">
+    <span class="badge">Trade</span>
+    <h4>Exports, imports, openness</h4>
+    <div class="kecil" style="line-height:1.7;">
+      World Bank memberi ukuran perdagangan sebagai rasio terhadap PDB.
+      OECD membantu membaca isi dan mekanismenya lewat TiVA (value added), TFI (friksi), dan STRI (hambatan jasa).
+      Korespondensinya ada pada alur logika: perdagangan bukan hanya besar, tetapi bagaimana value added dan friksi membentuk daya saing. [11][12][13]
+    </div>
+  </div>
+
+  <div class="card c4" style="grid-column:span 4;">
+    <span class="badge">Investment</span>
+    <h4>FDI dan iklim regulasi</h4>
+    <div class="kecil" style="line-height:1.7;">
+      World Bank menampilkan FDI sebagai arus masuk.
+      OECD memberi pembacaan “mengapa” lewat indeks restriksi dan desain aturan main investasi.
+      Korespondensinya muncul saat kamu menjelaskan FDI yang tinggi namun rapuh, atau rendah namun konsisten dengan aturan main tertentu. [14]
+    </div>
+  </div>
+
+  <div class="card c6" style="grid-column:span 4;">
+    <span class="badge">Human capital</span>
+    <h4>Pendidikan dan kesehatan</h4>
+    <div class="kecil" style="line-height:1.7;">
+      World Bank menampilkan enrolment, belanja, dan outcome dasar.
+      OECD memberi benchmark dan kerangka baca sistem melalui Education at a Glance dan Health at a Glance.
+      Korespondensinya terasa saat kamu menulis bahwa belanja bukan satu-satunya ukuran, lalu mengarah ke kapasitas sistem dan kualitas output. [7][8]
+    </div>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+Kalimat penutup yang aman untuk dipakai: World Bank memberi gambaran posisi dan tren yang cepat, sedangkan OECD memberi cara baca yang lebih disiplin untuk menjelaskan konteks, benchmark, dan implikasi kebijakan. Jika keduanya dibaca bersama, interpretasi angka lebih stabil dan tidak gampang jatuh pada kesimpulan yang terlalu cepat. [17][20]
+"""
+    )
+
+    # =========================================================
+    # Enrichment: template narasi + poin yang sering salah
+    # =========================================================
     st.markdown('<hr class="hr">', unsafe_allow_html=True)
+    st.markdown("### Template narasi siap pakai untuk halaman World Bank")
 
-    st.markdown("### Template narasi siap pakai untuk halaman World Bank (copy-friendly)")
-
-    with st.expander("Buka template narasi", expanded=False):
+    with st.expander("Buka template narasi (copy-friendly)", expanded=False):
         st.markdown(
             """
 **Template 1 (peta + kuartil)**  
-“Pada tahun ____, posisi Indonesia berada ____ (di sekitar median/di atas Q3/di bawah Q1). Posisi ini menunjukkan ____ pada indikator ____. Angka ini perlu dibaca bersama ____ karena pergerakan indikator ini sering mengikuti ____.”
+“Pada tahun ____, posisi Indonesia berada ____ (di sekitar median/di atas Q3/di bawah Q1). Posisi ini menunjukkan ____ pada indikator ____. Angka ini dibaca bersama ____ karena pergerakan indikator ini sering mengikuti ____.”
 
 **Template 2 (tren time series)**  
-“Dalam rentang ____–____, indikator ____ untuk Indonesia bergerak ____. Perubahan ini selaras/tidak selaras dengan konteks ____ yang dibahas OECD. Fokus kebijakan yang relevan untuk menjelaskan pola ini adalah ____.”
+“Dalam rentang ____–____, indikator ____ untuk Indonesia bergerak ____. Pola ini selaras/tidak selaras dengan konteks ____ yang dibahas OECD. Pertanyaan kebijakan yang paling relevan adalah ____.”
 
 **Template 3 (mengaitkan dengan report OECD)**  
 “OECD menekankan ____ sebagai isu kunci. Ini memberi cara baca yang lebih tajam untuk angka World Bank: bukan hanya tinggi/rendah, tetapi apakah struktur ____, institusi ____, dan risiko ____ mendukung perbaikan yang bertahan.”
@@ -382,22 +436,25 @@ Roadmap aksesi memberi urutan proses dan area kebijakan yang dinilai. Logika ker
 
     st.markdown(
         """
-Catatan yang relevan untuk dashboard: sebagian indikator World Bank memiliki irisan dengan ekosistem statistik OECD. Dalam konteks aksesi, kebutuhan pelaporan yang lebih terstruktur dan periodik membuat profil data Indonesia berpotensi lebih kaya dan lebih mudah dibandingkan lintas negara. [6][19]
-"""
+<div class="grid">
+  <div class="card c1" style="grid-column:span 6;">
+    <span class="badge">Checklist interpretasi</span>
+    <h4>Sebelum menulis 1 paragraf</h4>
+    <div class="kecil" style="line-height:1.7;">
+      Pastikan sudah jelas: posisi (median/Q1/Q3), arah (tren), konteks (report OECD), dan risiko terdekat (shock eksternal, institusi, struktur sektor).
+    </div>
+  </div>
+  <div class="card c7" style="grid-column:span 6;">
+    <span class="badge">Kesalahan yang sering terjadi</span>
+    <h4>Yang bikin interpretasi rapuh</h4>
+    <div class="kecil" style="line-height:1.7;">
+      Menyimpulkan sebab-akibat dari satu angka, mengabaikan definisi indikator, memakai wilayah agregat sebagai pembanding, dan menutup paragraf tanpa konsekuensi kebijakan yang jelas.
+    </div>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
     )
-
-    with st.expander("Catatan data: OECD dan World Bank", expanded=False):
-        st.markdown(
-            """
-World Development Indicators milik World Bank dikompilasi dari berbagai sumber internasional, dan sebagian indikatornya juga bersumber dari statistik OECD.
-Implikasinya, indikator Indonesia yang biasa dipakai lewat World Bank punya irisan yang kuat dengan ekosistem indikator OECD, sehingga keterbandingan lintas negara lebih mudah dibangun.
-
-OECD juga menjalankan Data Collection Programme yang mengumpulkan data dari produsen statistik resmi negara melalui kuesioner, web queries, platform online, dan SDMX.
-Dalam konteks aksesi, kanal pengumpulan data ini membuat profil data Indonesia di OECD berpotensi makin kaya karena ada kebutuhan pelaporan yang lebih terstruktur dan periodik.
-
-OECD menyusun publikasi berbasis evidence dan peer review, termasuk OECD Economic Surveys untuk Indonesia, yang menunjukkan OECD melakukan konsolidasi dan validasi data untuk analisis kebijakan.
-"""
-        )
 
 # =========================================================
 # TAB 2
@@ -427,10 +484,10 @@ Cara pakai yang paling konsisten: ambil satu temuan diagnosis dan satu implikasi
 <div class="card c2">
   <span class="badge">Makro</span>
   <h4>Baseline, risiko, dan diagnosis</h4>
-  <div class="kecil">
-  Economic Outlook dipakai untuk baseline dan risiko global yang memengaruhi pertumbuhan dan inflasi.
-  Economic Surveys dipakai untuk diagnosis struktur ekonomi Indonesia dan prioritas reform.
-  Going for Growth dipakai untuk membingkai reform dalam bahasa benchmark lintas negara.
+  <div class="kecil" style="line-height:1.7;">
+    Economic Outlook dipakai untuk baseline dan risiko global yang memengaruhi pertumbuhan dan inflasi.
+    Economic Surveys dipakai untuk diagnosis struktur ekonomi Indonesia dan prioritas reform.
+    Going for Growth dipakai untuk membingkai reform dalam bahasa benchmark lintas negara.
   </div>
 </div>
 """,
@@ -446,9 +503,9 @@ Cara pakai yang paling konsisten: ambil satu temuan diagnosis dan satu implikasi
 <div class="card c5">
   <span class="badge">Jobs</span>
   <h4>Membaca LFPR dan pengangguran sebagai paket</h4>
-  <div class="kecil">
-  Employment Outlook membantu menghubungkan partisipasi kerja, slack pasar kerja, kualitas pekerjaan, dan tekanan demografi.
-  Society at a Glance membantu menempatkan angka pasar kerja dalam konteks sosial.
+  <div class="kecil" style="line-height:1.7;">
+    Employment Outlook membantu menghubungkan partisipasi kerja, slack pasar kerja, kualitas pekerjaan, dan tekanan demografi.
+    Society at a Glance membantu menempatkan angka pasar kerja dalam konteks sosial.
   </div>
 </div>
 """,
@@ -463,9 +520,9 @@ Cara pakai yang paling konsisten: ambil satu temuan diagnosis dan satu implikasi
 <div class="card c1">
   <span class="badge">Trade</span>
   <h4>Trade angka besar, value added, dan friksi</h4>
-  <div class="kecil">
-  TiVA membantu membaca trade sebagai rantai nilai. TFI membantu membaca friksi fasilitasi. STRI membantu membaca hambatan jasa.
-  Kombinasi ini membuat interpretasi ekspor impor lebih tajam daripada sekadar peringkat peta.
+  <div class="kecil" style="line-height:1.7;">
+    TiVA membantu membaca trade sebagai rantai nilai. TFI membantu membaca friksi fasilitasi. STRI membantu membaca hambatan jasa.
+    Kombinasi ini membuat interpretasi ekspor impor lebih tajam daripada sekadar peringkat peta.
   </div>
 </div>
 """,
@@ -481,9 +538,9 @@ Cara pakai yang paling konsisten: ambil satu temuan diagnosis dan satu implikasi
 <div class="card c4">
   <span class="badge">Investment and governance</span>
   <h4>FDI sebagai hasil aturan main</h4>
-  <div class="kecil">
-  FDI Restrictiveness Index memberi cara baca yang tegas: FDI tidak dibaca sebagai angka masuk saja, melainkan sebagai hasil rezim regulasi.
-  Government at a Glance dan Tax Administration memberi konteks kapasitas institusi dan administrasi yang menentukan ruang kebijakan.
+  <div class="kecil" style="line-height:1.7;">
+    FDI Restrictiveness Index memberi cara baca yang tegas: FDI tidak dibaca sebagai angka masuk saja, melainkan sebagai hasil rezim regulasi.
+    Government at a Glance dan Tax Administration memberi konteks kapasitas institusi dan administrasi yang menentukan ruang kebijakan.
   </div>
 </div>
 """,
@@ -499,9 +556,9 @@ Cara pakai yang paling konsisten: ambil satu temuan diagnosis dan satu implikasi
 <div class="card c6">
   <span class="badge">Human capital</span>
   <h4>Membaca output dan input layanan dasar</h4>
-  <div class="kecil">
-  Education at a Glance membantu membaca enrolment dan belanja pendidikan sebagai sinyal kualitas sistem.
-  Health at a Glance membantu membaca belanja kesehatan dan outcome sebagai kapasitas sistem, bukan sekadar besaran anggaran.
+  <div class="kecil" style="line-height:1.7;">
+    Education at a Glance membantu membaca enrolment dan belanja pendidikan sebagai sinyal kualitas sistem.
+    Health at a Glance membantu membaca belanja kesehatan dan outcome sebagai kapasitas sistem, bukan sekadar besaran anggaran.
   </div>
 </div>
 """,
@@ -516,9 +573,9 @@ Cara pakai yang paling konsisten: ambil satu temuan diagnosis dan satu implikasi
 <div class="card c3">
   <span class="badge">Well-being</span>
   <h4>Angka ekonomi dan kualitas hidup</h4>
-  <div class="kecil">
-  Society at a Glance dan How’s Life? memperluas interpretasi dari indikator ekonomi ke kesejahteraan.
-  Ini berguna saat kamu menulis implikasi kebijakan dari kemiskinan, ketimpangan, dan outcome sosial.
+  <div class="kecil" style="line-height:1.7;">
+    Society at a Glance dan How’s Life? memperluas interpretasi dari indikator ekonomi ke kesejahteraan.
+    Ini berguna saat kamu menulis implikasi kebijakan dari kemiskinan, ketimpangan, dan outcome sosial.
   </div>
 </div>
 """,
@@ -646,7 +703,7 @@ Langkah yang bekerja paling konsisten:
 4) Ambil satu diagnosis dan satu implikasi kebijakan, lalu tulis interpretasi yang menyambungkan angka dengan konteks.  
 5) Tutup dengan kalimat konsekuensi kebijakan yang jelas: apa yang perlu diperhatikan jika tren berlanjut, dan apa risiko jika gap dibiarkan.
 
-Kalimat yang paling aman untuk penutup: “angka menunjukkan ____; OECD menekankan ____; konsekuensi kebijakan yang masuk akal adalah ____.”
+Kalimat penutup yang aman: “angka menunjukkan ____; OECD menekankan ____; konsekuensi kebijakan yang masuk akal adalah ____.”
 """
     )
 
@@ -656,15 +713,15 @@ Kalimat yang paling aman untuk penutup: “angka menunjukkan ____; OECD menekank
   <div class="card c1" style="grid-column:span 6;">
     <span class="badge">Checklist interpretasi</span>
     <h4>Sebelum menulis 1 paragraf</h4>
-    <div class="kecil">
-    Pastikan kamu sudah: (a) tahu posisinya (median/Q1/Q3), (b) tahu arahnya (tren), (c) tahu konteks utama (report OECD), (d) tahu risiko terdekat (shock eksternal, institusi, struktur sektor).
+    <div class="kecil" style="line-height:1.7;">
+      Pastikan sudah jelas: posisi (median/Q1/Q3), arah (tren), konteks (report OECD), dan risiko terdekat (shock eksternal, institusi, struktur sektor).
     </div>
   </div>
   <div class="card c7" style="grid-column:span 6;">
-    <span class="badge">Kesalahan yang sering muncul</span>
-    <h4>Yang biasanya bikin interpretasi rapuh</h4>
-    <div class="kecil">
-    Menyimpulkan sebab-akibat dari satu angka, mengabaikan definisi indikator, memakai negara agregat sebagai pembanding, dan menutup paragraf tanpa konsekuensi kebijakan yang jelas.
+    <span class="badge">Kesalahan yang sering terjadi</span>
+    <h4>Yang bikin interpretasi rapuh</h4>
+    <div class="kecil" style="line-height:1.7;">
+      Menyimpulkan sebab-akibat dari satu angka, mengabaikan definisi indikator, memakai wilayah agregat sebagai pembanding, dan menutup paragraf tanpa konsekuensi kebijakan yang jelas.
     </div>
   </div>
 </div>
@@ -675,7 +732,7 @@ Kalimat yang paling aman untuk penutup: “angka menunjukkan ____; OECD menekank
     st.caption("Catatan: halaman ini deskriptif dan ditujukan untuk interpretasi data. Inferensi kausal perlu desain empiris terpisah.")
 
 # =========================================================
-# REFERENCES (tetap lengkap, tidak berkurang; ditambah 1 link data portal)
+# REFERENCES (tetap lengkap + tidak berkurang)
 # =========================================================
 with st.expander("📚 Referensi (tautan) — format sitasi angka seperti page 2", expanded=False):
     st.markdown(
