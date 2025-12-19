@@ -407,15 +407,17 @@ Pada ekspor, posisi tinggi bisa mencerminkan basis produksi dan akses pasar yang
 Pada impor, posisi tinggi sering konsisten dengan kebutuhan input impor, pola konsumsi, atau integrasi rantai pasok. Nilai impor yang tinggi tidak selalu “buruk” karena dapat mencerminkan aktivitas produksi yang kuat. Yang lebih informatif adalah pembacaan bersama ekspor, kurs, dan komposisi barang yang diperdagangkan.
 """
         )
-st.markdown(
-    """
+
+    # pastikan blok tambahan ini INDENT-nya sama dengan st.caption / with st.expander
+    st.markdown(
+        """
 Perdagangan menjelaskan cara sebuah ekonomi “terhubung” dengan dunia. Angka ekspor yang tinggi pada peta berarti negara tersebut punya kapasitas menjual barang dan jasa ke luar negeri dalam skala besar pada tahun itu. Itu biasanya datang dari kombinasi ukuran ekonomi, kemampuan produksi, jaringan perusahaan, dan logistik yang mendukung arus keluar masuk barang. Angka ekspor yang rendah lebih sering muncul pada negara dengan basis produksi kecil atau keterisolasian pasar, bukan semata karena kebijakan. Di sini, perbedaan antarnegara paling tepat dibaca sebagai perbedaan kemampuan masuk dan bertahan di pasar global, karena biaya perdagangan dan friksi lintas batas tetap menjadi penentu utama arus dagang. [1][2]
 
 Dampaknya ke ekonomi berjalan lewat tiga jalur yang jelas. Jalur pertama, ekspor menambah permintaan dan mengangkat output sektor tradable, sehingga efeknya cepat terasa pada aktivitas produksi dan kesempatan kerja di sektor yang terhubung ke pasar dunia. Jalur kedua, impor input dan barang modal memberi dorongan produktivitas dan efisiensi, karena banyak industri modern bergantung pada komponen, mesin, dan intermediate goods dari luar untuk menghasilkan output bernilai tambah. Jalur ketiga, perdagangan mendorong spesialisasi dan peningkatan kualitas produk melalui kompetisi dan standar, sehingga negara yang mampu naik kelas dalam rantai nilai biasanya menunjukkan ekspor yang lebih stabil dan lebih beragam. Literatur perdagangan menempatkan mekanisme ini sebagai alasan mengapa integrasi perdagangan sering terkait dengan produktivitas dan perubahan struktur ekonomi. [2][3][4]
 
 Risikonya juga nyata dan perlu dibaca sejak awal. Ketergantungan ekspor pada sedikit komoditas atau sedikit mitra membuat kinerja ekonomi sangat sensitif pada perubahan harga dunia dan guncangan permintaan eksternal. Ketergantungan impor tertentu membuat inflasi dan biaya produksi cepat terdorong saat logistik terganggu atau nilai tukar melemah. Tarif dan friksi perdagangan memengaruhi harga input, insentif produksi, dan alokasi sumber daya antar sektor, sehingga perubahan kecil pada hambatan dagang bisa terasa besar pada industri tertentu. Karena itu, angka perdagangan paling kuat maknanya jika dibaca bersama komposisi barang yang diperdagangkan dan ruang kebijakan untuk meredam guncangan eksternal. [1][4][5]
 """
-)
+    )
 
     st.caption("Catatan: Analisis ini bersifat deskriptif dan tidak dimaksudkan sebagai inferensi kausal.")
 
@@ -428,6 +430,8 @@ Risikonya juga nyata dan perlu dibaca sejak awal. Ketergantungan ekspor pada sed
 [4] Heterogenitas perusahaan dan respons ekspor.  
 [5] Tarif, hambatan perdagangan, dan implikasi kebijakan perdagangan.
 """
+        )
+
         )
         st.link_button("American Economic Review (AER)", "https://www.aeaweb.org/journals/aer")
         st.link_button("Journal of International Economics", "https://www.sciencedirect.com/journal/journal-of-international-economics")
