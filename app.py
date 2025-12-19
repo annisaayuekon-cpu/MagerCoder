@@ -29,6 +29,7 @@ pages = [
     st.Page(page="pages/page9.py",  title="Kesehatan",                          icon="🏥"),
     st.Page(page="pages/page10.py", title="Energi & Lingkungan",                icon="🌱"),
     st.Page(page="pages/page11.py", title="World Bank 2024",           icon="📘"),
+    st.Page(page="pages/page12.py", title="Indonesia Accession to the OECD",           icon="🏛️"),
 ]
 
 # -----------------------------
