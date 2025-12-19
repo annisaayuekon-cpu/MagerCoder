@@ -198,6 +198,31 @@ if df_long.empty:
 
 df_long["year"] = df_long["year"].astype(int)
 
+# -----------------------------------------------------------------------------
+# ✅ STATISTIK RINGKAS (nilai terbaru per negara)  [TAMBAHAN, TANPA MENGURANGI NARASI]
+# -----------------------------------------------------------------------------
+st.subheader("🔎 Statistik Ringkas (nilai terbaru per negara)")
+
+df_latest = (
+    df_long.sort_values(["country", "year"])
+          .groupby("country", as_index=False)
+          .tail(1)  # ambil observasi terakhir per negara (tahun terbesar yang tersedia)
+          .rename(columns={"year": "latest_year", "value": "latest_value"})
+)
+
+top10 = df_latest.sort_values("latest_value", ascending=False).head(10)
+bottom10 = df_latest.sort_values("latest_value", ascending=True).head(10)
+
+colL, colR = st.columns(2)
+
+with colL:
+    st.markdown("**Top 10 (terbesar)**")
+    st.dataframe(top10[["country", "latest_value"]], use_container_width=True)
+
+with colR:
+    st.markdown("**Bottom 10 (terendah)**")
+    st.dataframe(bottom10[["country", "latest_value"]], use_container_width=True)
+
 # -----------------------------
 # Slider tahun untuk peta
 # -----------------------------
@@ -364,7 +389,7 @@ Indikator pasar kerja lintas negara tetap perlu dibaca dengan kehati-hatian kare
             "Sylla (2013) — Limitations of unemployment concept in developing countries (International Labour Review)",
             "https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1564-913X.2013.00167.x",
         )
-        
+
 # -----------------------------
 # Time series per negara
 # -----------------------------
@@ -413,7 +438,7 @@ else:
         window_label = f"sejak {start_year}"
     else:
         start_year = int(df_window["year"].min())
-        start_val = float(df_window.loc[df_window["year"] == start_year, "value"].iloc[0])
+        start_val = float(df_country.loc[df_country["year"] == start_year, "value"].iloc[0])
         window_label = f"{start_year}–{last_year}"
 
     delta = last_val - start_val
@@ -461,10 +486,9 @@ else:
     st.dataframe(df_country.reset_index(drop=True))
 
 # -----------------------------
-# Tabel lengkap & download
+# Data lengkap (long format) -> tombol saja
 # -----------------------------
 st.subheader("📘 Data Lengkap (long format)")
-st.dataframe(df_long.reset_index(drop=True), use_container_width=True)
 
 csv_download = df_long.to_csv(index=False)
 st.download_button(
