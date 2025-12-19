@@ -49,11 +49,20 @@ with st.sidebar:
     st.title("Navigasi Aksesi OECD")
     st.info(
         "Halaman ini merangkum proses aksesi Indonesia ke OECD, milestone kunci, "
-        "serta struktur Roadmap yang menjadi rujukan review teknis, reform agenda,"
-        "dan alignment Indonesia, OECD, dan World Bank."
+        "serta struktur Roadmap yang menjadi rujukan review teknis, reform agenda, "
+        "dan alignment Indonesia di ekosistem OECD serta indikator yang banyak dipakai lintas lembaga (termasuk World Bank)."
     )
 
-    )
+    with st.expander("Catatan data: OECD dan World Bank", expanded=False):
+        st.markdown(
+            """
+Sejumlah indikator World Bank dikompilasi dari berbagai sumber internasional, termasuk statistik OECD pada tema-tema tertentu.
+Implikasinya, cakupan metrik untuk Indonesia cenderung makin nyambung lintas platform ketika standar data, definisi, dan kebutuhan pelaporan makin selaras.
+
+OECD juga punya mekanisme pengumpulan data dan survei sendiri melalui kuesioner, program data collection, serta peer review berbasis evidence.
+Dalam konteks aksesi, kebutuhan review komite biasanya mendorong data Indonesia menjadi lebih terstruktur, periodik, dan mudah dibandingkan lintas negara.
+"""
+        )
 
     st.markdown("### Dokumen & rujukan inti")
     st.link_button("OECD Accession Process (Steps)", "https://www.oecd.org/en/about/legal/oecd-accession-process.html")
@@ -65,6 +74,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Kata kunci:**")
     st.caption("Accession Roadmap • Initial Memorandum • Committee Reviews • Formal Opinions • Council decision")
+
 
 # -----------------------------------------------------------------------------
 # 3) HEADER
