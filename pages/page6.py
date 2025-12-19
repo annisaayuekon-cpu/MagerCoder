@@ -272,7 +272,7 @@ except Exception as e:
     st.error(f"Gagal membaca file `{os.path.basename(file_path)}`: {e}")
     st.stop()
 
-with st.expander("📄 Preview Data Mentah")
+with st.expander("📄 Preview Data Mentah (klik untuk buka)", expanded=True):
     st.dataframe(df.head(20), use_container_width=True)
 
 # -----------------------------
