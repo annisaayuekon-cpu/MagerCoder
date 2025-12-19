@@ -502,7 +502,6 @@ else:
 # Tabel lengkap & download (format sama seperti page2)
 # -----------------------------
 st.subheader("📘 Data Lengkap (long format)")
-st.dataframe(df_long.reset_index(drop=True), use_container_width=True)
 
 csv_download = df_long.to_csv(index=False)
 st.download_button(
