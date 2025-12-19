@@ -3,6 +3,54 @@ import pandas as pd
 import os
 import plotly.express as px
 
+st.markdown(
+    """
+<style>
+.kpi-wrap{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+  margin: 0.25rem 0 0.9rem 0;
+}
+.kpi{
+  flex: 1 1 190px;
+  border-radius: 18px;
+  padding: 18px 18px;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(0,0,0,.10);
+}
+.kpi-title{
+  font-size: 14px;
+  opacity: .92;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+.kpi-value{
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .2px;
+}
+.kpi-sub{
+  font-size: 13px;
+  opacity: .92;
+  margin-top: 10px;
+  line-height: 1.25;
+}
+.kpi-blue-1{ background: linear-gradient(135deg, #0b2f6a, #1e5aa6); }
+.kpi-blue-2{ background: linear-gradient(135deg, #114a9e, #4aa3ff); }
+.kpi-slate{  background: linear-gradient(135deg, #2f3b45, #607d8b); }
+.kpi-gray{   background: linear-gradient(135deg, #4b5563, #9aa5b1); }
+
+@media (max-width: 900px){
+  .kpi-value{ font-size: 34px; }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
 st.set_page_config(layout="wide")
 
 st.title("🔥 Inflasi & Pengeluaran Konsumen — Peta Dunia + Time Series")
@@ -85,6 +133,23 @@ def _fmt(v, digits=2):
     if v is None:
         return "NA"
     return f"{v:,.{digits}f}"
+
+def render_kpi_cards(cards: list[dict]):
+    html = '<div class="kpi-wrap">'
+    for c in cards:
+        title = c.get("title", "")
+        value = c.get("value", "")
+        sub = c.get("sub", "")
+        cls = c.get("cls", "kpi-blue-1")
+        html += f'''
+        <div class="kpi {cls}">
+            <div class="kpi-title">{title}</div>
+            <div class="kpi-value">{value}</div>
+            {f'<div class="kpi-sub">{sub}</div>' if sub else ''}
+        </div>
+        '''
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
 
 def _orientation(label: str) -> str:
