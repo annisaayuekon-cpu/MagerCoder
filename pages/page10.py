@@ -226,6 +226,7 @@ def read_pdf_bytes(path: str) -> bytes | None:
         return f.read()
 
 def resolve_sndc_path() -> str | None:
+    # UPDATED: file name is "Second NDC Indonesia.pdf"
     candidates = [
         "Second NDC Indonesia.pdf",
         os.path.join("assets", "Second NDC Indonesia.pdf"),
