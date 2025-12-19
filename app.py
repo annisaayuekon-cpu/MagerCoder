@@ -19,7 +19,7 @@ pages = [
     safe_page("pages/page9.py", "Kesehatan", "🏥"),
     safe_page("pages/page10.py", "Energi & Lingkungan", "🌱"),
     safe_page("pages/page11.py", "World Bank 2024", "📘"),
-    safe_page("pages/outlooks.py", "Indonesia Accession to the OECD", "🏛️"),
+    safe_page("pages/outlooks.py", "Data World Bank dan OECD", "🏛️"),
 ]
 pages = [p for p in pages if p is not None]
 
