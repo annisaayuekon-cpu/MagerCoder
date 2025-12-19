@@ -410,7 +410,7 @@ Korespondensi ini bukan berarti datanya selalu identik. World Bank menekankan se
 
     st.markdown(
         """
-Kalimat penutup yang aman untuk dipakai: World Bank memberi gambaran posisi dan tren yang cepat, sedangkan OECD memberi cara baca yang lebih disiplin untuk menjelaskan konteks, benchmark, dan implikasi kebijakan. Jika keduanya dibaca bersama, interpretasi angka lebih stabil dan tidak gampang jatuh pada kesimpulan yang terlalu cepat. [17][20]
+World Bank memberi gambaran posisi dan tren yang cepat, on the other hand, OECD memberikan cara memahami data yang lebih disiplin untuk menjelaskan konteks, benchmark, dan implikasi kebijakan. Jika keduanya dibaca bersama, interpretasi angka lebih stabil dan tidak gampang jatuh pada kesimpulan yang terlalu cepat. [17][20]
 """
     )
 
