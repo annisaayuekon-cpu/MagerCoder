@@ -257,7 +257,9 @@ else:
 
     st.markdown(
         """
-Ringkasan kuartil memberi gambaran sebaran global pada tahun terpilih. Pembacaan peta menjadi lebih informatif jika posisi suatu negara dibandingkan terhadap median dan kuartil, bukan hanya melihat warna pada peta.
+Ringkasan kuartil Kuartil memecah negara menjadi empat kelompok pada tahun terpilih. Pakai median sebagai patokan, di mana negara di atas median berada pada setengah distribusi dengan tingkat pengangguran lebih tinggi. Pakai Q1 dan Q3 untuk menilai extreme point, di mana apabila di bawah Q1 berarti termasuk kelompok pengangguran terendah, di atas Q3 berarti masuk kelompok tertinggi.
+
+Untuk indikator pengangguran, angka yang lebih tinggi dibaca sebagai tekanan pasar kerja yang lebih besar. Angka yang sangat rendah tidak otomatis berarti pasar kerja ‘sehat’, karena bisa dipengaruhi porsi informal yang besar atau perbedaan definisi ‘aktif mencari kerja’.
 """
     )
     st.caption(_interpret_note(indicator_label))
@@ -299,7 +301,7 @@ Berdasarkan nilai terbaru **{indicator_label}** pada **{selected_year}**, terlih
 • **Kelompok nilai tertinggi didominasi oleh:** **{top_str}**  
 • **Kelompok nilai terendah didominasi oleh:** **{bottom_str}**
 
-Rentang nilai pada tahun ini bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)}**, dengan median **{_fmt(q50)}** dan rentang antar kuartil (Q3–Q1) sebesar **{_fmt(iqr)}**. Posisi sebuah negara menjadi lebih bermakna jika dibaca relatif terhadap median dan kuartil, karena peta menampilkan distribusi, bukan “peringkat absolut” yang berdiri sendiri.
+Rentang nilai pada tahun ini bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)}**, dengan median **{_fmt(q50)}** dan rentang antar kuartil (Q3–Q1) sebesar **{_fmt(iqr)}**. Untuk memahami statistik ini, posisi sebuah negara perlu dibandingan dengan median dan kuartil.
 """
     )
 
@@ -307,7 +309,7 @@ Rentang nilai pada tahun ini bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)
     if indicator_label in ["Unemployment rate", "Youth unemployment"]:
         st.markdown(
             """
-Pada indikator pengangguran, nilai tinggi lazim dibaca sebagai sinyal tekanan pasar kerja yang lebih besar, sedangkan nilai rendah biasanya mengarah pada kondisi yang lebih longgar. Literatur makro sering menempatkan pengangguran dalam relasi jangka pendek dengan pelemahan output melalui Okun’s law [1]. Untuk youth unemployment, level tinggi sering dikaitkan dengan friksi transisi sekolah ke kerja serta risiko “scarring” pada karier awal yang dampaknya dapat bertahan melampaui fase resesi [2].
+Pada indikator pengangguran, nilai tinggi bisa dianggap sebagai sinyal tekanan pasar kerja yang lebih besar, sedangkan nilai rendah biasanya mengarah pada kondisi yang lebih longgar. Kebanyakan literatur makro menyikapi pengangguran dalam relasi jangka pendek dengan pelemahan output melalui Okun’s law [1]. Untuk youth unemployment, level tinggi sering dikaitkan dengan friksi/friction transisi sekolah ke kerja serta risiko “scarring” pada karier awal yang dampaknya dapat bertahan melampaui fase resesi [2].
 
 Pembacaan lintas negara tetap perlu menempatkan konteks struktur ekonomi. Perubahan komposisi pekerjaan antar sektor dan dinamika transformasi struktural dapat mengubah profil pasar kerja dan produktivitas, sehingga pola pengangguran dan penyerapan tenaga kerja tidak selalu sejalan antar negara [3]. Ukuran pengangguran resmi juga dapat meng-underestimate masalah penyerapan tenaga kerja pada ekonomi dengan informalitas tinggi, sehingga interpretasi yang lebih kuat biasanya melihat indikator partisipasi dan kualitas pekerjaan sebagai pelengkap [5]. Variasi partisipasi angkatan kerja sendiri terkait erat dengan demografi dan fertilitas, yang memengaruhi ukuran angkatan kerja dan komposisi pencari kerja [4].
 """
@@ -323,7 +325,7 @@ Dalam konteks pembangunan, transformasi struktural dan pergeseran pekerjaan anta
     else:
         st.markdown(
             """
-Untuk indikator struktur penyerapan kerja, pembacaan paling informatif biasanya fokus pada arah perubahan dari waktu ke waktu dan konteks transformasi struktural. Literatur pembangunan menekankan bahwa pergeseran tenaga kerja lintas sektor berkaitan dengan produktivitas dan pola pertumbuhan, sehingga komposisi pekerjaan menjadi jendela untuk membaca fase pembangunan dan kerentanan terhadap guncangan [3].
+Untuk indikator struktur penyerapan kerja, dapat dibaca dengan fokus pada arah perubahan dari waktu ke waktu dan konteks transformasi struktural. Banyak literatur pembangunan yang menekankan bahwa pergeseran tenaga kerja lintas sektor berkaitan dengan produktivitas dan pola pertumbuhan, sehingga komposisi pekerjaan menjadi jendela untuk membaca fase pembangunan dan kerentanan terhadap guncangan [3].
 
 Indikator pasar kerja lintas negara tetap perlu dibaca dengan kehati-hatian karena ukuran standar dapat kurang sensitif terhadap surplus tenaga kerja terselubung pada ekonomi dengan informalitas tinggi [5]. Faktor demografi dan fertilitas juga berpengaruh pada pasokan tenaga kerja dan partisipasi, sehingga perubahan komposisi kerja sering bergerak bersama perubahan struktur penduduk usia kerja [4]. Di level siklis, relasi output dan pengangguran memberi konteks tentang kapan perubahan struktur kerja berkaitan dengan perlambatan ekonomi, bukan sekadar tren jangka panjang [1]. Youth unemployment memberi sinyal tambahan tentang kualitas transisi sekolah-ke-kerja dan risiko dampak jangka panjang pada generasi muda [2].
 """
