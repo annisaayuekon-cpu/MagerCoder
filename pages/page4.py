@@ -12,6 +12,22 @@ st.write(
     "berdasarkan data referensi lokal (file CSV) yang ada di folder `data/`."
 )
 
+# -----------------------------------------------------------------------------
+# PANDUAN INTERPRETASI + DEFINISI VARIABEL (format sama seperti template page lain)
+# -----------------------------------------------------------------------------
+with st.expander("📌 Panduan interpretasi indikator (ringkas)", expanded=False):
+    st.markdown(
+        """
+**Exports of goods and services** mengukur nilai ekspor barang dan jasa suatu negara. Pada statistik World Bank, indikator ini paling sering disajikan sebagai **persen terhadap Produk Domestik Bruto** untuk menggambarkan intensitas ekspor relatif terhadap ukuran ekonomi. Nilai tinggi biasanya selaras dengan kapasitas produksi sektor tradable dan akses pasar global, tetapi maknanya banyak ditentukan oleh struktur ekspor (komoditas vs manufaktur).
+
+**Imports of goods and services** mengukur nilai impor barang dan jasa. Pada banyak dataset World Bank, indikator ini juga disajikan sebagai **persen terhadap Produk Domestik Bruto**. Nilai tinggi sering terkait kebutuhan input produksi, barang modal, dan integrasi rantai pasok. Nilai rendah perlu dibaca bersama kapasitas produksi domestik, biaya perdagangan, dan daya beli.
+
+**Trade openness** umumnya dipakai sebagai ukuran keterbukaan perdagangan, lazimnya dihitung sebagai **(ekspor + impor) dibagi Produk Domestik Bruto**. Nilai tinggi sering muncul pada ekonomi kecil yang sangat terintegrasi pada perdagangan global. Ekonomi besar bisa terlihat lebih rendah secara rasio walaupun nilai perdagangan absolutnya besar.
+
+**Tariff rates** mengukur tingkat tarif impor yang dikenakan, biasanya berupa **rata-rata tarif terapan** (dalam persen). Nilai tinggi mengarah pada friksi tarif yang lebih kuat dan potensi kenaikan biaya input impor. Pembacaan yang lebih kuat memeriksa struktur tarif dan kebijakan non-tarif yang berjalan bersamaan.
+"""
+    )
+
 DATA_DIR = "data"
 
 FILES = {
@@ -205,6 +221,31 @@ if df_long.empty:
     st.error("Setelah transformasi, tidak ada data bernilai (semua NA).")
     st.stop()
 df_long["year"] = df_long["year"].astype(int)
+
+# -----------------------------------------------------------------------------
+# ✅ STATISTIK RINGKAS (nilai terbaru per negara)  [TAMBAHAN, format sama]
+# -----------------------------------------------------------------------------
+st.subheader("🔎 Statistik Ringkas (nilai terbaru per negara)")
+
+df_latest = (
+    df_long.sort_values(["country", "year"])
+          .groupby("country", as_index=False)
+          .tail(1)
+          .rename(columns={"year": "latest_year", "value": "latest_value"})
+)
+
+df_latest_clean = df_latest[~df_latest["country"].apply(is_aggregate_entity)].copy()
+
+top10 = df_latest_clean.sort_values("latest_value", ascending=False).head(10)
+bottom10 = df_latest_clean.sort_values("latest_value", ascending=True).head(10)
+
+colL, colR = st.columns(2)
+with colL:
+    st.markdown("**Top 10 (terbesar)**")
+    st.dataframe(top10[["country", "latest_value"]], use_container_width=True)
+with colR:
+    st.markdown("**Bottom 10 (terendah)**")
+    st.dataframe(bottom10[["country", "latest_value"]], use_container_width=True)
 
 # Slider tahun untuk peta
 years = sorted(df_long["year"].unique().tolist())
@@ -463,9 +504,8 @@ else:
 
     st.dataframe(df_country.reset_index(drop=True), use_container_width=True)
 
-# Data lengkap & download
+# Data lengkap -> tombol download saja (format sama seperti template)
 st.subheader("📘 Data Lengkap (long format)")
-st.dataframe(df_long.reset_index(drop=True), use_container_width=True)
 
 csv_download = df_long.to_csv(index=False)
 st.download_button(
