@@ -49,18 +49,19 @@ with st.sidebar:
     st.title("Navigasi Aksesi OECD")
     st.info(
         "Halaman ini merangkum proses aksesi Indonesia ke OECD, milestone kunci, "
-        "serta struktur Roadmap yang menjadi rujukan review teknis, reform agenda, "
-        "dan alignment Indonesia di ekosistem OECD serta indikator yang banyak dipakai lintas lembaga (termasuk World Bank)."
+        "serta struktur Roadmap yang menjadi rujukan review teknis dan reform agenda."
     )
 
-    with st.expander("Catatan data: OECD dan World Bank", expanded=False):
+    with st.expander("Catatan data: OECD dan World Bank"):
         st.markdown(
             """
-Sejumlah indikator World Bank dikompilasi dari berbagai sumber internasional, termasuk statistik OECD pada tema-tema tertentu.
-Implikasinya, cakupan metrik untuk Indonesia cenderung makin nyambung lintas platform ketika standar data, definisi, dan kebutuhan pelaporan makin selaras.
+World Development Indicators milik World Bank dikompilasi dari berbagai sumber internasional, dan sebagian indikatornya juga bersumber dari statistik OECD.
+Implikasinya, indikator Indonesia yang biasa dipakai lewat World Bank punya irisan yang kuat dengan ekosistem indikator OECD, sehingga keterbandingan lintas negara lebih mudah dibangun.
 
-OECD juga punya mekanisme pengumpulan data dan survei sendiri melalui kuesioner, program data collection, serta peer review berbasis evidence.
-Dalam konteks aksesi, kebutuhan review komite biasanya mendorong data Indonesia menjadi lebih terstruktur, periodik, dan mudah dibandingkan lintas negara.
+OECD juga menjalankan Data Collection Programme yang mengumpulkan data dari produsen statistik resmi negara melalui kuesioner, web queries, platform online, dan SDMX.
+Dalam konteks aksesi, kanal pengumpulan data ini membuat profil data Indonesia di OECD berpotensi makin kaya karena ada kebutuhan pelaporan yang lebih terstruktur dan periodik.
+
+OECD menyusun publikasi berbasis evidence dan peer review, termasuk OECD Economic Surveys untuk Indonesia, yang menunjukkan OECD memang melakukan pengumpulan, konsolidasi, dan validasi data untuk analisis kebijakan.
 """
         )
 
@@ -74,7 +75,6 @@ Dalam konteks aksesi, kebutuhan review komite biasanya mendorong data Indonesia 
     st.markdown("---")
     st.markdown("**Kata kunci:**")
     st.caption("Accession Roadmap • Initial Memorandum • Committee Reviews • Formal Opinions • Council decision")
-
 
 # -----------------------------------------------------------------------------
 # 3) HEADER
