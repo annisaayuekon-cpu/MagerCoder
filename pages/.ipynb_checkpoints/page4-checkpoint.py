@@ -1,4 +1,4 @@
-# pages/page7.py
+# pages/page4.py
 import streamlit as st
 import pandas as pd
 import os
@@ -6,40 +6,38 @@ import plotly.express as px
 
 st.set_page_config(layout="wide")
 
-st.title("🌍 Demografi — Peta Dunia + Time Series")
+st.title("🌐 Perdagangan Internasional — Peta Dunia + Time Series")
 st.write(
-    "Halaman ini menampilkan indikator **demografi global** (Populasi, Urbanisasi, Fertilitas, Harapan Hidup) "
-    "berdasarkan file CSV lokal di folder `data/`."
+    "Halaman ini menampilkan indikator perdagangan internasional "
+    "berdasarkan data referensi lokal (file CSV) yang ada di folder `data/`."
 )
 
 # -----------------------------------------------------------------------------
-# PANDUAN INTERPRETASI + DEFINISI VARIABEL (disamakan gaya dengan page4/page8)
+# PANDUAN INTERPRETASI + DEFINISI VARIABEL (format sama seperti template page lain)
 # -----------------------------------------------------------------------------
 with st.expander("📌 Panduan interpretasi indikator (ringkas)", expanded=False):
     st.markdown(
         """
-**Total Population** mengukur jumlah penduduk (jiwa). Nilai besar sering merefleksikan ukuran pasar dan basis tenaga kerja, tetapi interpretasi kebijakan perlu melihat produktivitas, struktur umur, dan kapasitas layanan publik.
+**Exports of goods and services** mengukur nilai ekspor barang dan jasa suatu negara. Pada statistik World Bank, indikator ini paling sering disajikan sebagai **persen terhadap Produk Domestik Bruto** untuk menggambarkan intensitas ekspor relatif terhadap ukuran ekonomi. Nilai tinggi biasanya selaras dengan kapasitas produksi sektor tradable dan akses pasar global, tetapi maknanya banyak ditentukan oleh struktur ekspor (komoditas vs manufaktur).
 
-**Urban Population (%)** mengukur persentase penduduk yang tinggal di kawasan perkotaan. Nilai tinggi umumnya selaras dengan transformasi struktural dan konsentrasi aktivitas ekonomi, namun dapat meningkatkan kebutuhan infrastruktur dan tantangan ketimpangan kota–desa.
+**Imports of goods and services** mengukur nilai impor barang dan jasa. Pada banyak dataset World Bank, indikator ini juga disajikan sebagai **persen terhadap Produk Domestik Bruto**. Nilai tinggi sering terkait kebutuhan input produksi, barang modal, dan integrasi rantai pasok. Nilai rendah perlu dibaca bersama kapasitas produksi domestik, biaya perdagangan, dan daya beli.
 
-**Fertility Rate** (children per woman) menggambarkan rata-rata jumlah anak per perempuan. Penurunan fertilitas sering terkait transisi demografi (pendidikan, urbanisasi, kesehatan), berdampak pada struktur umur dan dinamika bonus demografi.
+**Trade openness** umumnya dipakai sebagai ukuran keterbukaan perdagangan, lazimnya dihitung sebagai **(ekspor + impor) dibagi Produk Domestik Bruto**. Nilai tinggi sering muncul pada ekonomi kecil yang sangat terintegrasi pada perdagangan global. Ekonomi besar bisa terlihat lebih rendah secara rasio walaupun nilai perdagangan absolutnya besar.
 
-**Life Expectancy at Birth** (years) menggambarkan harapan hidup saat lahir. Nilai lebih tinggi biasanya mengindikasikan perbaikan kesehatan, gizi, dan layanan medis.
+**Tariff rates** mengukur tingkat tarif impor yang dikenakan, biasanya berupa **rata-rata tarif terapan** (dalam persen). Nilai tinggi mengarah pada friksi tarif yang lebih kuat dan potensi kenaikan biaya input impor. Pembacaan yang lebih kuat memeriksa struktur tarif dan kebijakan non-tarif yang berjalan bersamaan.
 """
     )
 
 DATA_DIR = "data"
 
 FILES = {
-    "Total Population": "7.1. TOTAL POPULATION.csv",
-    "Urban Population (%)": "7.2. URBAN POPULATION.csv",
-    "Fertility Rate": "7.3. FERTILITY RATE.csv",
-    "Life Expectancy at Birth": "7.4. LIFE EXPECTANCY AT BIRTH.csv",
+    "Exports of goods and services": "4.1 Exports of goods and services.csv",
+    "Imports of goods and services": "4.2 Imports of goods and services.csv",
+    "Trade openness": "4.3 Trade openness.csv",
+    "Tariff rates": "4.4 Tariff rates.csv",
 }
 
-# -----------------------------------------------------------------------------
-# Loader CSV toleran (samakan pola page4/page8)
-# -----------------------------------------------------------------------------
+
 @st.cache_data
 def load_csv_tolerant(path: str) -> pd.DataFrame:
     for sep in [";", ",", "\t"]:
@@ -67,7 +65,6 @@ def _fmt(v, digits=2):
 
 
 def _clean_numeric_series(raw: pd.Series) -> pd.Series:
-    # rapikan "..", NA, koma desimal, dsb. (mirip page4)
     s = raw.astype(str).str.strip()
     s = s.replace({"..": "", "NA": "", "N/A": "", "nan": "", "None": ""})
 
@@ -80,45 +77,40 @@ def _clean_numeric_series(raw: pd.Series) -> pd.Series:
     s.loc[has_comma & ~has_dot] = s.loc[has_comma & ~has_dot].str.replace(",", ".", regex=False)
 
     s = s.str.replace("\u00a0", "", regex=False)
-    s = s.str.replace("%", "", regex=False)
-
     return pd.to_numeric(s, errors="coerce")
 
 
 def _orientation(label: str) -> str:
-    # orientasi "lebih tinggi lebih baik" hanya jelas untuk life expectancy.
-    if label == "Life Expectancy at Birth":
-        return "higher_better"
+    if label == "Tariff rates":
+        return "higher_worse"
     return "neutral"
 
 
 def _interpret_note(label: str) -> str:
-    if label == "Total Population":
+    if label == "Exports of goods and services":
         return (
-            "Populasi besar bukan otomatis ‘lebih baik’. Pembacaan kuat melihat struktur umur, "
-            "urbanisasi, produktivitas, dan kapasitas layanan publik."
+            "Angka tinggi pada ekspor lebih kuat maknanya jika dibaca bersama struktur ekspor (komoditas atau manufaktur) "
+            "karena profil risikonya berbeda."
         )
-    if label == "Urban Population (%)":
+    if label == "Imports of goods and services":
         return (
-            "Urbanisasi tinggi perlu dibaca bersama kualitas infrastruktur kota, pasar kerja, "
-            "dan ketimpangan kota–desa."
+            "Angka impor tinggi sering selaras dengan kebutuhan input produksi dan keterhubungan rantai pasok. "
+            "Angka rendah perlu dibaca bersama kapasitas produksi, hambatan biaya perdagangan, dan daya beli."
         )
-    if label == "Fertility Rate":
+    if label == "Tariff rates":
         return (
-            "Fertilitas turun sering terkait transisi demografi, tetapi interpretasi kebijakan perlu melihat "
-            "struktur umur, dependency ratio, dan dinamika pasar kerja."
+            "Tarif yang tinggi berarti friksi tarif lebih kuat. Angka ini paling informatif jika disejajarkan dengan struktur tarif "
+            "dan kebijakan non-tarif."
         )
-    if label == "Life Expectancy at Birth":
+    if label == "Trade openness":
         return (
-            "Harapan hidup lebih tinggi biasanya mengindikasikan perbaikan kesehatan, namun juga berkaitan dengan "
-            "kebutuhan layanan lansia dan beban penyakit tidak menular."
+            "Trade openness membaca eksposur perdagangan relatif terhadap ukuran ekonomi. Ekonomi besar bisa tampak lebih rendah secara rasio "
+            "meski nilai perdagangan absolutnya besar."
         )
-    return "Interpretasi bersifat deskriptif dan perlu dibaca bersama konteks demografi negara."
+    return "Interpretasi bersifat deskriptif dan perlu dibaca bersama konteks statistik dan struktur ekonomi negara."
 
 
-# -----------------------------------------------------------------------------
-# Filter entitas agregat (samakan dengan page4/page8)
-# -----------------------------------------------------------------------------
+# Filter entitas agregat untuk interpretasi (regional/income group/multilateral)
 AGG_EXACT = {
     "World",
     "European Union",
@@ -168,9 +160,7 @@ def is_aggregate_entity(name: str) -> bool:
     return False
 
 
-# -----------------------------------------------------------------------------
 # Cek file yang tersedia
-# -----------------------------------------------------------------------------
 available_indicators = []
 for label, fname in FILES.items():
     if os.path.exists(os.path.join(DATA_DIR, fname)):
@@ -178,15 +168,13 @@ for label, fname in FILES.items():
 
 if not available_indicators:
     st.error(
-        f"Tidak ada file CSV Page 7 yang ditemukan di folder `{DATA_DIR}/`. "
-        "Pastikan file 7.1–7.4 sudah diletakkan di sana."
+        f"Tidak ada file CSV Page 4 yang ditemukan di folder `{DATA_DIR}/`. "
+        "Pastikan file 4.1–4.4 sudah diletakkan di sana."
     )
     st.stop()
 
-# -----------------------------------------------------------------------------
-# Pilih indikator & load data
-# -----------------------------------------------------------------------------
-indicator_label = st.selectbox("Pilih indikator demografi", available_indicators)
+
+indicator_label = st.selectbox("Pilih indikator perdagangan internasional", available_indicators)
 file_path = os.path.join(DATA_DIR, FILES[indicator_label])
 
 try:
@@ -198,13 +186,15 @@ except Exception as e:
 st.subheader("📄 Preview Data Mentah")
 st.dataframe(df.head(15), use_container_width=True)
 
-# -----------------------------------------------------------------------------
 # Deteksi kolom tahun & negara
-# -----------------------------------------------------------------------------
 cols = [str(c) for c in df.columns]
 year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
+
 if not year_cols:
-    st.error("Tidak ditemukan kolom tahun (mis. 1990, 2000, dst.) di file CSV ini. Cek header kolom.")
+    st.error(
+        "Tidak ditemukan kolom tahun (misalnya 1990, 2000, dst.) di file CSV ini. "
+        "Cek kembali header kolom."
+    )
     st.stop()
 
 country_col = None
@@ -215,9 +205,7 @@ for cand in ["Country Name", "country", "Country", "Negara", "Entity"]:
 if country_col is None:
     country_col = df.columns[0]
 
-# -----------------------------------------------------------------------------
 # Long format
-# -----------------------------------------------------------------------------
 df_long = df.melt(
     id_vars=[country_col],
     value_vars=year_cols,
@@ -229,15 +217,13 @@ df_long["country"] = df_long["country"].astype(str).str.strip()
 df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce").astype("Int64")
 df_long["value"] = _clean_numeric_series(df_long["value"])
 df_long = df_long.dropna(subset=["year", "value"])
-
 if df_long.empty:
     st.error("Setelah transformasi, tidak ada data bernilai (semua NA).")
     st.stop()
-
 df_long["year"] = df_long["year"].astype(int)
 
 # -----------------------------------------------------------------------------
-# ✅ STATISTIK RINGKAS (nilai terbaru per negara)
+# ✅ STATISTIK RINGKAS (nilai terbaru per negara)  [TAMBAHAN, format sama]
 # -----------------------------------------------------------------------------
 st.subheader("🔎 Statistik Ringkas (nilai terbaru per negara)")
 
@@ -261,14 +247,13 @@ with colR:
     st.markdown("**Bottom 10 (terendah)**")
     st.dataframe(bottom10[["country", "latest_value"]], use_container_width=True)
 
-# -----------------------------------------------------------------------------
-# PETA DUNIA
-# -----------------------------------------------------------------------------
+# Slider tahun untuk peta
 years = sorted(df_long["year"].unique().tolist())
 year_min = int(min(years))
 year_max = int(max(years))
 
 selected_year = st.slider("Pilih tahun untuk peta dunia", year_min, year_max, year_max)
+
 df_map = df_long[df_long["year"] == selected_year].copy()
 
 st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
@@ -295,12 +280,11 @@ else:
             f"Detail error: {e}"
         )
 
-# -----------------------------------------------------------------------------
-# INTERPRETASI PETA (kuartil + catatan)
-# -----------------------------------------------------------------------------
+# Interpretasi peta (pakai df_map_clean untuk kuartil/top-bottom)
 st.subheader("🧠 Interpretasi peta (tahun terpilih)")
 
 df_map_clean = df_map[~df_map["country"].apply(is_aggregate_entity)].copy()
+
 vals = df_map_clean["value"].dropna()
 n_countries = int(vals.shape[0])
 
@@ -315,41 +299,42 @@ else:
     colC.metric("Median (Q2)", _fmt(q50))
     colD.metric("Kuartil 3 (Q3)", _fmt(q75))
 
-    if indicator_label == "Total Population":
+    if indicator_label == "Tariff rates":
         para2 = (
-            "Untuk populasi (nilai absolut), kelompok di atas Q3 cenderung berisi negara berpenduduk besar. "
-            "Interpretasi yang kuat biasanya membandingkan juga indikator per kapita atau struktur umur."
+            "Untuk tarif, angka yang lebih tinggi berarti friksi tarif lebih kuat pada tahun itu. "
+            "Pembacaan yang tegas melihat apakah sebuah negara sudah melampaui Q3 atau masih berada di sekitar median. "
+            "Nilai yang sangat rendah masuk akal jika selaras dengan struktur tarif dan kebijakan non-tarif."
         )
-    elif indicator_label == "Urban Population (%)":
+    elif indicator_label == "Trade openness":
         para2 = (
-            "Untuk urbanisasi (%), kelompok di atas Q3 menunjukkan negara dengan proporsi penduduk kota yang relatif tinggi. "
-            "Bacaan yang rapi menautkan ini dengan industrialisasi, pasar kerja, dan kapasitas infrastruktur perkotaan."
+            "Untuk trade openness, angka yang lebih tinggi berarti eksposur perdagangan yang lebih besar. "
+            "Pembacaan yang tegas melihat apakah sebuah negara berada di atas Q3 atau dekat median, lalu menautkannya dengan ukuran ekonomi dan struktur sektor. "
+            "Angka rendah sering muncul pada ekonomi besar dengan basis permintaan domestik kuat."
         )
-    elif indicator_label == "Fertility Rate":
+    elif indicator_label == "Exports of goods and services":
         para2 = (
-            "Untuk fertilitas, nilai yang lebih tinggi berarti rata-rata kelahiran per perempuan lebih tinggi. "
-            "Kelompok di bawah Q1 sering konsisten dengan fase transisi demografi yang lebih lanjut, "
-            "sedangkan kelompok di atas Q3 menunjukkan fertilitas relatif tinggi pada tahun itu."
+            "Untuk ekspor, angka yang lebih tinggi berarti kapasitas ekspor yang lebih besar pada tahun itu. "
+            "Pembacaan yang tegas melihat apakah sebuah negara sudah melampaui Q3 atau masih berada di sekitar median. "
+            "Maknanya berubah ketika ekspor didorong komoditas dibanding manufaktur."
         )
     else:
         para2 = (
-            "Untuk harapan hidup, nilai yang lebih tinggi biasanya mengindikasikan kondisi kesehatan yang lebih baik. "
-            "Negara di atas Q3 dapat dikategorikan memiliki harapan hidup relatif tinggi pada tahun tersebut."
+            "Untuk impor, angka yang lebih tinggi berarti intensitas impor yang lebih besar pada tahun itu. "
+            "Pembacaan yang tegas melihat apakah sebuah negara sudah melampaui Q3 atau masih berada di sekitar median. "
+            "Nilai rendah tidak otomatis berarti substitusi impor berhasil."
         )
 
     st.markdown(
         f"""
-Ringkasan kuartil memecah negara menjadi empat kelompok pada tahun terpilih. Median dipakai sebagai patokan posisi relatif. Q1 dan Q3 menunjukkan batas kelompok bawah dan atas.
+Ringkasan kuartil memecah negara menjadi empat kelompok pada tahun terpilih. Median dipakai sebagai patokan untuk posisi relatif. Q1 dan Q3 menunjukkan titik pemisah kelompok bawah dan atas.
 
 {para2}
 """
     )
     st.caption(_interpret_note(indicator_label))
 
-# -----------------------------------------------------------------------------
-# ANALISIS DESKRIPTIF (Top/Bottom 5 tahun terpilih)
-# -----------------------------------------------------------------------------
-st.subheader("🧠 Analisis Ekonomi/Demografi Deskriptif")
+# Analisis deskriptif (Top & Bottom pakai df_map_clean)
+st.subheader("🧠 Analisis Ekonomi Deskriptif")
 
 if df_map_clean.empty:
     st.write("Analisis deskriptif membutuhkan data pada tahun yang dipilih.")
@@ -379,7 +364,7 @@ else:
 
     st.markdown(
         f"""
-Berdasarkan nilai **{indicator_label}** pada **{selected_year}**, terlihat perbedaan yang jelas antar negara.
+Berdasarkan nilai terbaru **{indicator_label}** pada **{selected_year}**, terlihat perbedaan yang jelas antar negara.
 
 • **Kelompok nilai tertinggi didominasi oleh:** **{top_str}**  
 • **Kelompok nilai terendah didominasi oleh:** **{bottom_str}**
@@ -388,61 +373,64 @@ Rentang nilai bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)}**, median **{
 """
     )
 
-    if indicator_label == "Total Population":
+    if indicator_label == "Tariff rates":
         st.markdown(
             """
-Populasi sangat dipengaruhi ukuran negara. Negara besar akan mendominasi peringkat atas. Untuk analisis kebijakan, biasanya populasi dibaca bersama indikator struktur umur (dependency ratio), urbanisasi, dan kualitas layanan dasar.
+Pada tarif, negara di kelompok atas (di atas Q3) biasanya menandakan hambatan tarif yang relatif lebih kuat. Perbedaan angka sering terkait desain proteksi sektoral, strategi industrial, dan respons terhadap tekanan eksternal. Nilai rendah lebih konsisten dengan rezim tarif yang lebih terbuka, tetapi pembacaan tetap memeriksa instrumen non-tarif.
 """
         )
-    elif indicator_label == "Urban Population (%)":
+    elif indicator_label == "Trade openness":
         st.markdown(
             """
-Urbanisasi tinggi sering berkaitan dengan transformasi ekonomi dan konsentrasi aktivitas, namun juga menuntut kapasitas infrastruktur, perumahan, dan transportasi. Urbanisasi rendah tidak otomatis buruk—bisa mencerminkan struktur ekonomi yang masih agraris atau penyebaran penduduk yang merata.
+Pada trade openness, angka tinggi sering muncul pada ekonomi kecil yang sangat terintegrasi dengan perdagangan global, sementara ekonomi besar bisa tampak lebih rendah secara rasio meski nilai perdagangan absolutnya besar. Peta lebih bermakna jika dibaca sebagai eksposur relatif, lalu dibandingkan dengan struktur sektor dan kerentanan terhadap guncangan eksternal.
 """
         )
-    elif indicator_label == "Fertility Rate":
+    elif indicator_label == "Exports of goods and services":
         st.markdown(
             """
-Fertilitas tinggi sering terjadi pada fase transisi demografi awal. Penurunan fertilitas biasanya terkait pendidikan, akses kesehatan reproduksi, dan urbanisasi. Implikasi kebijakan bergantung pada struktur umur: fertilitas terlalu rendah dalam jangka panjang dapat memicu penuaan penduduk.
+Pada ekspor, posisi tinggi bisa mencerminkan basis produksi dan akses pasar yang kuat, tetapi karakter ekspornya penting. Ekspor berbasis komoditas lebih sensitif pada siklus harga dunia. Ekspor berbasis manufaktur lebih terkait kapasitas industri, produktivitas, dan integrasi rantai pasok.
 """
         )
     else:
         st.markdown(
             """
-Harapan hidup merefleksikan kesehatan populasi. Nilai tinggi biasanya selaras dengan kesehatan yang lebih baik, tetapi juga meningkatkan kebutuhan layanan kesehatan kronis dan lansia. Nilai rendah bisa terkait akses layanan kesehatan, gizi, sanitasi, atau konflik.
+Pada impor, posisi tinggi sering konsisten dengan kebutuhan input impor, pola konsumsi, atau integrasi rantai pasok. Nilai impor yang tinggi tidak otomatis buruk karena dapat selaras dengan aktivitas produksi yang kuat. Pembacaan yang lebih informatif melihatnya bersama ekspor, kurs, dan komposisi barang yang diperdagangkan.
 """
         )
 
     st.markdown(
         """
-Indikator demografi menjadi fondasi analisis pembangunan karena memengaruhi tenaga kerja, kebutuhan layanan publik, dan produktivitas. Interpretasi paling kuat biasanya menggabungkan beberapa indikator sekaligus (mis. fertilitas + harapan hidup + urbanisasi) untuk membaca fase transisi demografi suatu negara. [1][2][3]
+Perdagangan menjelaskan cara sebuah ekonomi terhubung dengan dunia. Angka yang tinggi pada peta berarti kapasitas transaksi lintas batas terjadi dalam skala besar pada tahun itu, didorong oleh ukuran ekonomi, kemampuan produksi, jejaring perusahaan, dan kelancaran logistik. Angka yang rendah lebih sering terkait basis produksi yang kecil atau keterbatasan konektivitas, bukan semata pilihan kebijakan. Pembacaan yang rapi menempatkan angka ini sebagai ukuran keterlibatan dalam pasar global dan besarnya friksi perdagangan yang dihadapi. [1][2]
+
+Dampak perdagangan ke ekonomi berjalan lewat tiga jalur. Ekspor menambah permintaan dan mengangkat output sektor tradable sehingga efeknya terlihat pada aktivitas produksi dan kesempatan kerja di sektor terkait. Impor input dan barang modal mendorong produktivitas karena banyak industri bergantung pada komponen, mesin, dan intermediate goods dari luar. Perdagangan juga mendorong spesialisasi dan peningkatan mutu lewat kompetisi dan standar, sehingga diversifikasi dan upgrading lebih kuat pada ekonomi yang berhasil memanfaatkan perdagangan untuk naik kelas. [2][3][4]
+
+Risiko ikut terbawa. Ketergantungan pada sedikit komoditas atau sedikit mitra membuat ekonomi sensitif pada harga dunia dan guncangan permintaan eksternal. Ketergantungan impor tertentu membuat biaya produksi dan inflasi mudah terdorong saat logistik terganggu atau nilai tukar melemah. Tarif dan friksi perdagangan mengubah harga input serta insentif produksi, sehingga dampaknya sering terkonsentrasi pada sektor tertentu. Karena itu, angka perdagangan paling kuat maknanya jika dibaca bersama komposisi ekspor impor dan ruang kebijakan untuk meredam guncangan. [1][4][5]
 """
     )
 
     st.caption("Catatan: Analisis ini bersifat deskriptif dan tidak dimaksudkan sebagai inferensi kausal.")
 
-    with st.expander("📚 Referensi (tautan) — dasar interpretasi", expanded=False):
+    with st.expander("📚 Referensi jurnal (tautan) — dasar interpretasi", expanded=False):
         st.markdown(
             """
-[1] Literatur transisi demografi dan implikasi ekonomi.  
-[2] Hubungan kesehatan populasi dan pembangunan (harapan hidup).  
-[3] Urbanisasi dan transformasi struktural.
+[1] Gravity model, trade costs, dan friksi perdagangan.  
+[2] Keterkaitan perdagangan dan pertumbuhan (evidence lintas negara).  
+[3] Trade liberalization dan dinamika pertumbuhan.  
+[4] Heterogenitas perusahaan dan respons ekspor.  
+[5] Tarif, hambatan perdagangan, dan implikasi kebijakan perdagangan.
 """
         )
-        st.link_button("Demography (journal)", "https://link.springer.com/journal/13524")
-        st.link_button("Population and Development Review", "https://onlinelibrary.wiley.com/journal/17284457")
+        st.link_button("American Economic Review (AER)", "https://www.aeaweb.org/journals/aer")
+        st.link_button("Journal of International Economics", "https://www.sciencedirect.com/journal/journal-of-international-economics")
+        st.link_button("Journal of Development Economics", "https://www.sciencedirect.com/journal/journal-of-development-economics")
         st.link_button("World Development", "https://www.sciencedirect.com/journal/world-development")
-        st.link_button("The Lancet", "https://www.thelancet.com/")
-        st.link_button("UN World Population Prospects", "https://population.un.org/wpp/")
+        st.link_button("Review of Economics and Statistics", "https://direct.mit.edu/rest")
 
-# -----------------------------------------------------------------------------
-# TIME SERIES PER NEGARA + INTERPRETASI TREN (gaya page4/page8)
-# -----------------------------------------------------------------------------
+# Time series per negara
 st.subheader("📈 Time Series per Negara")
 
 country_list = sorted(df_long["country"].dropna().unique().tolist())
-default_country = "Indonesia" if "Indonesia" in country_list else country_list[0]
-selected_country = st.selectbox("Pilih negara untuk grafik time series", country_list, index=country_list.index(default_country))
+selected_country = st.selectbox("Pilih negara untuk grafik time series", country_list)
 
 df_country = df_long[df_long["country"] == selected_country].sort_values("year")
 
@@ -487,31 +475,16 @@ else:
 
     orient = _orientation(indicator_label)
 
-    # interpretasi tren indikator-spesifik (lebih “natural” untuk demografi)
-    if indicator_label == "Fertility Rate":
-        if avg_change < 0:
-            st.markdown(
-                "Tren **menurun** mengarah pada transisi demografi (fertilitas turun). "
-                "Dampaknya bisa positif untuk penurunan dependency ratio jangka pendek, "
-                "namun jangka panjang perlu antisipasi penuaan penduduk bila turun terlalu rendah."
-            )
-        elif avg_change > 0:
-            st.markdown(
-                "Tren **meningkat** berarti fertilitas naik pada periode pengamatan. "
-                "Perlu dilihat bersama struktur umur, tingkat partisipasi kerja perempuan, dan kondisi kesehatan reproduksi."
-            )
-        else:
-            st.markdown("Nilai relatif stabil pada periode pengamatan.")
-    elif orient == "higher_better":
+    if orient == "higher_worse":
         if avg_change > 0:
             st.markdown(
-                "Tren meningkat mengarah pada perbaikan indikator pada periode pengamatan. "
-                "Untuk harapan hidup, ini konsisten dengan perbaikan kesehatan dan layanan."
+                "Tren meningkat mengarah pada friksi tarif yang lebih kuat pada periode pengamatan. "
+                "Cek episode perubahan kebijakan tarif dan sektor yang paling terdampak."
             )
         elif avg_change < 0:
             st.markdown(
-                "Tren menurun mengarah pada pelemahan indikator pada periode pengamatan. "
-                "Cek kemungkinan shock kesehatan, konflik, atau perubahan pencatatan statistik."
+                "Tren menurun mengarah pada pelonggaran friksi tarif pada periode pengamatan. "
+                "Cek respons impor dan perubahan biaya input."
             )
         else:
             st.markdown("Nilai relatif stabil pada periode pengamatan.")
@@ -519,27 +492,25 @@ else:
         if avg_change > 0:
             st.markdown(
                 "Tren meningkat menunjukkan indikator bergerak naik pada periode pengamatan. "
-                "Cek konteks kebijakan, struktur umur, dan perubahan ekonomi yang relevan."
+                "Cek konteks kurs, harga komoditas, dan perubahan struktur perdagangan."
             )
         elif avg_change < 0:
             st.markdown(
                 "Tren menurun menunjukkan indikator melemah pada periode pengamatan. "
-                "Cek konteks migrasi, perubahan struktur ekonomi, dan definisi statistik bila ada."
+                "Cek konteks shock permintaan global, hambatan biaya perdagangan, dan perubahan komposisi ekspor impor."
             )
         else:
             st.markdown("Nilai relatif stabil pada periode pengamatan.")
 
     st.dataframe(df_country.reset_index(drop=True), use_container_width=True)
 
-# -----------------------------------------------------------------------------
-# DOWNLOAD (samakan seperti template page4/page8: tombol saja)
-# -----------------------------------------------------------------------------
+# Data lengkap -> tombol download saja (format sama seperti template)
 st.subheader("📘 Data Lengkap (long format)")
 
 csv_download = df_long.to_csv(index=False)
 st.download_button(
     "⬇ Download data (CSV)",
     csv_download,
-    file_name=f"page7_demografi_{indicator_label.replace(' ', '_')}.csv",
+    file_name=f"page4_perdagangan_{indicator_label.replace(' ', '_')}.csv",
     mime="text/csv",
 )
