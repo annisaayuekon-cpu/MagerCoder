@@ -1,60 +1,72 @@
-# pages/3_oecd_aksesi.py
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
 
-# -----------------------------------------------------------------------------
-# 1) KONFIGURASI HALAMAN
-# -----------------------------------------------------------------------------
-st.set_page_config(
-    page_title="OECD & Aksesi Indonesia",
-    page_icon="🌐",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
+# =========================================================
+# STYLE (biru-abu, konsisten dengan feel dashboard kamu)
+# =========================================================
 st.markdown(
     """
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stTabs [data-baseweb="tab-list"] { gap: 2px; }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #ffffff;
-        border-radius: 6px 6px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-    }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: #0b4ea2;
-        color: white;
-    }
-    h1, h2, h3 { color: #0b2d5c; }
-    .highlight { color: #0b4ea2; font-weight: 700; }
-    </style>
-    """,
+<style>
+/* layout helpers */
+.block-title {font-size: 34px; font-weight: 800; margin: 0 0 6px 0;}
+.block-sub {font-size: 16px; opacity: 0.85; margin: 0 0 10px 0;}
+.small-muted {font-size: 13px; opacity: 0.7;}
+
+/* card styles */
+.card {
+  background: rgba(2, 132, 199, 0.07);
+  border: 1px solid rgba(2, 132, 199, 0.18);
+  border-radius: 18px;
+  padding: 16px 16px 14px 16px;
+  margin-bottom: 12px;
+}
+.card2 {
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 18px;
+  padding: 16px 16px 14px 16px;
+  margin-bottom: 12px;
+}
+.badge {
+  display:inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(30, 64, 175, 0.10);
+  border: 1px solid rgba(30, 64, 175, 0.16);
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.95;
+}
+.hr-soft {height:1px; background: rgba(15, 23, 42, 0.10); border:0; margin: 14px 0;}
+</style>
+""",
     unsafe_allow_html=True,
 )
 
-# -----------------------------------------------------------------------------
-# 2) SIDEBAR
-# -----------------------------------------------------------------------------
-OECD_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/OECD_logo.svg/512px-OECD_logo.svg.png"
+# =========================================================
+# HEADER
+# =========================================================
+logo_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/OECD_logo.svg/1024px-OECD_logo.svg.png"
 
-with st.sidebar:
-    st.image(OECD_LOGO, width=180)
-    st.title("Navigasi Aksesi OECD")
-    st.info(
-        "Halaman ini merangkum proses aksesi Indonesia ke OECD, milestone kunci, "
-        "serta struktur Roadmap yang menjadi rujukan review teknis dan reform agenda."
+c1, c2 = st.columns([1.2, 5])
+with c1:
+    st.image(logo_url, use_container_width=True)
+with c2:
+    st.markdown('<div class="block-title">Navigasi Aksesi OECD</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="block-sub">Halaman ini memakai <b>report</b> dan <b>outlook</b> OECD untuk menyikapi angka World Bank di dashboard: angka diperlakukan sebagai sinyal, lalu dibaca dengan konteks struktur ekonomi, institusi, dan risiko kebijakan.</div>',
+        unsafe_allow_html=True,
     )
 
-    with st.expander("Catatan data: OECD dan World Bank"):
-        st.markdown(
-            """
+st.info(
+    "Definisi pemakaian sumber: report/outlook OECD di bawah dipakai sebagai rujukan untuk membaca pola, membangun pembanding lintas negara, dan menilai implikasi kebijakan dari indikator World Bank. Fokusnya interpretasi, bukan klaim kausal."
+)
+
+# =========================================================
+# CATATAN DATA (teks kamu, ditaruh di tempat yang jelas)
+# =========================================================
+with st.expander("Catatan data: OECD dan World Bank", expanded=False):
+    st.markdown(
+        """
 World Development Indicators milik World Bank dikompilasi dari berbagai sumber internasional, dan sebagian indikatornya juga bersumber dari statistik OECD.
 Implikasinya, indikator Indonesia yang biasa dipakai lewat World Bank punya irisan yang kuat dengan ekosistem indikator OECD, sehingga keterbandingan lintas negara lebih mudah dibangun.
 
@@ -63,352 +75,267 @@ Dalam konteks aksesi, kanal pengumpulan data ini membuat profil data Indonesia d
 
 OECD menyusun publikasi berbasis evidence dan peer review, termasuk OECD Economic Surveys untuk Indonesia, yang menunjukkan OECD memang melakukan pengumpulan, konsolidasi, dan validasi data untuk analisis kebijakan.
 """
-        )
+    )
 
-    st.markdown("### Dokumen & rujukan inti")
-    st.link_button("OECD Accession Process (Steps)", "https://www.oecd.org/en/about/legal/oecd-accession-process.html")
-    st.link_button("Indonesia Accession Roadmap (PDF)", "https://one.oecd.org/document/C%282024%2966/FINAL/en/pdf")
-    st.link_button("Press release (20 Feb 2024)", "https://www.oecd.org/en/about/news/press-releases/2024/02/oecd-makes-historic-decision-to-open-accession-discussions-with-indonesia.html")
-    st.link_button("Press release (2 May 2024)", "https://www.oecd.org/en/about/news/press-releases/2024/05/ministers-welcome-roadmap-for-accession-discussions-with-indonesia.html")
-    st.link_button("Press release (3 Jun 2025)", "https://www.oecd.org/en/about/news/press-releases/2025/06/indonesia-reaches-key-milestones-in-oecd-accession-process.html")
+st.markdown('<hr class="hr-soft">', unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown("**Kata kunci:**")
-    st.caption("Accession Roadmap • Initial Memorandum • Committee Reviews • Formal Opinions • Council decision")
+# =========================================================
+# ALIGNMENT + ROADMAP (ringkas, tetap “masuk” ke dashboard)
+# =========================================================
+st.markdown("## Alignment Indonesia ke OECD dan Roadmap")
+a1, a2, a3 = st.columns(3)
 
-# -----------------------------------------------------------------------------
-# 3) HEADER
-# -----------------------------------------------------------------------------
-st.title("🌐 OECD dan Aksesi Indonesia ke OECD")
-st.markdown("#### Snapshot proses, Roadmap (rules & guidelines), dan peta komite review")
+with a1:
+    st.markdown(
+        """
+<div class="card">
+<span class="badge">Rules & guidelines</span>
+<h4 style="margin:10px 0 6px 0;">Roadmap aksesi</h4>
+<div class="small-muted">
+Roadmap menetapkan urutan proses, ruang lingkup review teknis, dan cara kerja evaluasi alignment. Ini dipakai sebagai “kerangka baca” saat kamu membandingkan indikator Indonesia dengan negara OECD.
+</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.link_button("Buka Roadmap (PDF)", "https://one.oecd.org/document/C(2024)66/FINAL/en/pdf")
 
-# -----------------------------------------------------------------------------
-# DATA RINGKAS (berbasis rilis & Roadmap OECD)
-# -----------------------------------------------------------------------------
-milestones = pd.DataFrame(
-    [
-        {
-            "Tanggal": "2024-02-20",
-            "Peristiwa": "OECD Council membuka diskusi aksesi dengan Indonesia",
-            "Catatan": "Council decision untuk memulai accession discussions",
-            "Sumber": "OECD press release",
-            "Link": "https://www.oecd.org/en/about/news/press-releases/2024/02/oecd-makes-historic-decision-to-open-accession-discussions-with-indonesia.html",
-        },
-        {
-            "Tanggal": "2024-03-29",
-            "Peristiwa": "Accession Roadmap diadopsi oleh Council",
-            "Catatan": "Roadmap jadi dokumen publik yang mengatur terms, conditions, process",
-            "Sumber": "Accession Roadmap",
-            "Link": "https://one.oecd.org/document/C%282024%2966/FINAL/en/pdf",
-        },
-        {
-            "Tanggal": "2024-05-02",
-            "Peristiwa": "Menteri menyambut Roadmap pada MCM 2024",
-            "Catatan": "Roadmap diposisikan sebagai jangkar reform agenda menuju 2045",
-            "Sumber": "OECD press release",
-            "Link": "https://www.oecd.org/en/about/news/press-releases/2024/05/ministers-welcome-roadmap-for-accession-discussions-with-indonesia.html",
-        },
-        {
-            "Tanggal": "2025-06-03",
-            "Peristiwa": "Indonesia menyerahkan Initial Memorandum (IM) pada MCM 2025",
-            "Catatan": "IM memulai fase teknis komprehensif; ada request join Anti-Bribery Convention",
-            "Sumber": "OECD press release",
-            "Link": "https://www.oecd.org/en/about/news/press-releases/2025/06/indonesia-reaches-key-milestones-in-oecd-accession-process.html",
-        },
-    ]
+with a2:
+    st.markdown(
+        """
+<div class="card">
+<span class="badge">Peer review</span>
+<h4 style="margin:10px 0 6px 0;">Komite teknis dan metode OECD</h4>
+<div class="small-muted">
+Aksesi dijalankan lewat review berbasis standar OECD dan praktik peer review. Artinya, data dan kebijakan dibaca sebagai paket: konsistensi aturan main, kapasitas institusi, dan hasil yang terukur.
+</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.link_button("Accession process (OECD)", "https://www.oecd.org/en/about/legal/oecd-accession-process.html")
+
+with a3:
+    st.markdown(
+        """
+<div class="card">
+<span class="badge">Data companion</span>
+<h4 style="margin:10px 0 6px 0;">Menghubungkan WDI ke publikasi OECD</h4>
+<div class="small-muted">
+Angka World Bank memberi peta “berapa dan di mana”. Publikasi OECD membantu menjawab “kenapa”, “seberapa rentan”, dan “reform apa yang biasanya dipilih negara pembanding”.
+</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.link_button(
+        "OECD Economic Surveys: Indonesia",
+        "https://www.oecd.org/en/publications/oecd-economic-surveys-indonesia-2024_de87555a-en.html",
+    )
+
+st.markdown('<hr class="hr-soft">', unsafe_allow_html=True)
+
+# =========================================================
+# OUTLOOK + REPORT NAVIGATOR (dipakai untuk interpretasi indikator WDI)
+# =========================================================
+st.markdown("## Outlook dan report OECD untuk menyikapi indikator World Bank")
+
+st.caption(
+    "Pilih tema. Di tiap tema, kamu dapat daftar publikasi OECD yang paling relevan untuk membaca indikator World Bank di dashboard ini."
 )
-milestones["Tanggal"] = pd.to_datetime(milestones["Tanggal"])
 
-policy_areas = [
-    "Structural reform",
-    "Open trade and investment",
-    "Inclusive growth",
-    "Governance (integrity & anti-corruption)",
-    "Environment, biodiversity and climate",
-    "Digitalisation",
-    "Infrastructure (quality infrastructure)",
+THEMES = [
+    "Makro, inflasi, dan stabilitas",
+    "Pasar kerja dan produktivitas",
+    "Perdagangan dan integrasi global",
+    "Investasi, bisnis, dan tata kelola",
+    "Pendidikan, kesehatan, dan kesejahteraan",
 ]
 
-committees = pd.DataFrame(
-    [
-        ("Investment Committee", "Open trade and investment"),
-        ("Working Party on Responsible Business Conduct", "Open trade and investment"),
-        ("Working Group on Bribery in International Business Transactions", "Governance (integrity & anti-corruption)"),
-        ("Corporate Governance Committee", "Governance (integrity & anti-corruption)"),
-        ("Committee on Financial Markets", "Structural reform"),
-        ("Insurance and Private Pensions Committee", "Structural reform"),
-        ("Competition Committee", "Structural reform"),
-        ("Committee on Fiscal Affairs", "Structural reform"),
-        ("Environment Policy Committee", "Environment, biodiversity and climate"),
-        ("Chemicals and Biotechnology Committee", "Environment, biodiversity and climate"),
-        ("Public Governance Committee", "Governance (integrity & anti-corruption)"),
-        ("Committee of Senior Budget Officials", "Governance (integrity & anti-corruption)"),
-        ("Regulatory Policy Committee", "Structural reform"),
-        ("Regional Development Policy Committee", "Inclusive growth"),
-        ("Committee on Statistics and Statistical Policy", "Structural reform"),
-        ("Economic and Development Review Committee", "Structural reform"),
-        ("Education Policy Committee", "Inclusive growth"),
-        ("Employment, Labour and Social Affairs Committee", "Inclusive growth"),
-        ("Health Committee", "Inclusive growth"),
-        ("Trade Committee", "Open trade and investment"),
-        ("Working Party on Export Credits", "Open trade and investment"),
-        ("Committee for Agriculture", "Inclusive growth"),
-        ("Fisheries Committee", "Inclusive growth"),
-        ("Committee for Scientific and Technological Policy", "Digitalisation"),
-        ("Digital Policy Committee", "Digitalisation"),
-        ("Committee on Consumer Policy", "Structural reform"),
-        ("Steel Committee", "Open trade and investment"),
-        ("Shipbuilding Committee", "Open trade and investment"),
+theme = st.selectbox("Tema", THEMES, index=0)
+
+resources = {
+    "Makro, inflasi, dan stabilitas": [
+        {
+            "tag": "Country note",
+            "title": "OECD Economic Outlook — Indonesia",
+            "why": "Dipakai untuk membaca GDP, inflasi, dan dinamika permintaan agregat. Cocok untuk menguji apakah angka terbaru di WDI sejalan dengan proyeksi dan narasi kebijakan makro OECD.",
+            "use_for": "GDP, GDP growth, inflation proxy, konsumsi, investasi, trade shock",
+            "url": "https://www.oecd.org/en/publications/oecd-economic-outlook-volume-2025-issue-2_9f653ca1-en/full-report/indonesia_21d4d16b.html",
+            "ref": "[4]",
+        },
+        {
+            "tag": "Country review",
+            "title": "OECD Economic Surveys: Indonesia 2024",
+            "why": "Dipakai sebagai bacaan utama untuk memaknai angka WDI Indonesia: struktur ekonomi, reform prioritas, serta konteks institusi yang sering tidak tercermin di angka mentah.",
+            "use_for": "GDP, produktivitas, inflasi, fiskal, reform struktural",
+            "url": "https://www.oecd.org/en/publications/oecd-economic-surveys-indonesia-2024_de87555a-en.html",
+            "ref": "[3]",
+        },
+        {
+            "tag": "Structural reform",
+            "title": "Going for Growth 2025",
+            "why": "Dipakai untuk membaca indikator sebagai problem prioritas dan trade-off kebijakan, terutama saat kamu membandingkan Indonesia dengan negara pembanding di kuartil atas.",
+            "use_for": "pertumbuhan jangka menengah, produktivitas, reform agenda",
+            "url": "https://www.oecd.org/en/publications/going-for-growth-2025_50613c70-en.html",
+            "ref": "[5]",
+        },
     ],
-    columns=["Komite", "Area Roadmap (ringkas)"],
-)
+    "Pasar kerja dan produktivitas": [
+        {
+            "tag": "Flagship outlook",
+            "title": "OECD Employment Outlook 2025",
+            "why": "Dipakai untuk membaca LFPR, pengangguran, dan kualitas pekerjaan sebagai satu paket. Cocok untuk memberi bahasa kebijakan saat indikator pasar kerja terlihat ekstrem pada peta.",
+            "use_for": "LFPR, unemployment, youth unemployment, job quality",
+            "url": "https://www.oecd.org/en/publications/oecd-employment-outlook-2025_5d0e6655-en.html",
+            "ref": "[6]",
+        },
+        {
+            "tag": "Social indicators",
+            "title": "Society at a Glance 2025",
+            "why": "Dipakai untuk konteks sosial-ekonomi yang mengapit indikator pasar kerja, kemiskinan, dan ketimpangan. Membantu menghindari interpretasi yang terlalu sempit dari satu angka.",
+            "use_for": "kemiskinan, ketimpangan, indikator sosial, resilience",
+            "url": "https://www.oecd.org/en/publications/society-at-a-glance-2025_c51363b5-en.html",
+            "ref": "[10]",
+        },
+    ],
+    "Perdagangan dan integrasi global": [
+        {
+            "tag": "Trade structure",
+            "title": "OECD Trade in Value Added (TiVA)",
+            "why": "Dipakai untuk membaca ekspor/impor dengan perspektif rantai nilai. Cocok saat angka ekspor tinggi tetapi nilai tambah domestik belum tentu tinggi.",
+            "use_for": "exports, imports, value added, global value chains",
+            "url": "https://www.oecd.org/en/data/datasets/trade-in-value-added.html",
+            "ref": "[11]",
+        },
+        {
+            "tag": "Trade frictions",
+            "title": "OECD Trade Facilitation Indicators (TFI)",
+            "why": "Dipakai untuk menilai friksi logistik dan administrasi perdagangan yang sering menjelaskan gap antara potensi ekspor dan realisasi.",
+            "use_for": "trade costs, customs, logistics, facilitation",
+            "url": "https://www.oecd.org/en/data/datasets/trade-facilitation-indicators.html",
+            "ref": "[12]",
+        },
+        {
+            "tag": "Services trade",
+            "title": "OECD Services Trade Restrictiveness Index (STRI)",
+            "why": "Dipakai untuk membaca keterbukaan jasa. Relevan saat trade openness terlihat tinggi, tetapi jasa masih berhambatan sehingga produktivitas dan investasi ikut tertahan.",
+            "use_for": "trade openness, services restrictions, competitiveness",
+            "url": "https://www.oecd.org/en/data/datasets/services-trade-restrictiveness-index.html",
+            "ref": "[13]",
+        },
+    ],
+    "Investasi, bisnis, dan tata kelola": [
+        {
+            "tag": "FDI framework",
+            "title": "OECD FDI Regulatory Restrictiveness Index",
+            "why": "Dipakai untuk memaknai FDI sebagai hasil dari aturan main. Angka FDI di WDI lebih masuk akal kalau dibaca bersama rezim regulasi dan kepastian kebijakan.",
+            "use_for": "FDI, regulatory barriers, openness to investment",
+            "url": "https://www.oecd.org/en/data/datasets/fdi-regulatory-restrictiveness-index.html",
+            "ref": "[14]",
+        },
+        {
+            "tag": "Governance benchmark",
+            "title": "Government at a Glance: Southeast Asia 2025",
+            "why": "Dipakai untuk membaca kapasitas institusi publik sebagai fondasi hasil ekonomi. Cocok untuk menghubungkan indikator WDI dengan kualitas layanan publik dan tata kelola.",
+            "use_for": "governance, public service delivery, comparability",
+            "url": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2025/12/government-at-a-glance-southeast-asia-2025_1b04332c/bc89cb32-en.pdf",
+            "ref": "[9]",
+        },
+        {
+            "tag": "Tax & admin",
+            "title": "Tax Administration 2025: Indonesia",
+            "why": "Dipakai untuk membaca kapasitas fiskal dan administrasi yang akhirnya memengaruhi ruang kebijakan pembangunan.",
+            "use_for": "tax capacity, administration, fiscal space",
+            "url": "https://www.oecd.org/en/publications/tax-administration-2025-indonesia_7b7f6d7a-en.html",
+            "ref": "[15]",
+        },
+    ],
+    "Pendidikan, kesehatan, dan kesejahteraan": [
+        {
+            "tag": "Flagship indicators",
+            "title": "Education at a Glance 2025",
+            "why": "Dipakai untuk membaca enrolment dan belanja pendidikan sebagai outcome dan input. Membantu mengaitkan angka pendidikan dengan produktivitas jangka panjang.",
+            "use_for": "school enrolment, education spending, skills",
+            "url": "https://www.oecd.org/en/publications/education-at-a-glance-2025_8f738fff-en.html",
+            "ref": "[7]",
+        },
+        {
+            "tag": "Health systems",
+            "title": "Health at a Glance 2025",
+            "why": "Dipakai untuk membaca belanja kesehatan dan outcome dasar sebagai cermin kapasitas sistem kesehatan, bukan sekadar angka anggaran.",
+            "use_for": "health expenditure, mortality, health outcomes",
+            "url": "https://www.oecd.org/en/publications/health-at-a-glance-2025_7a7afb35-en.html",
+            "ref": "[8]",
+        },
+        {
+            "tag": "Well-being",
+            "title": "How’s Life?",
+            "why": "Dipakai untuk memperluas interpretasi dari “angka ekonomi” menjadi kesejahteraan. Cocok saat kamu perlu membahas trade-off pertumbuhan dan kualitas hidup.",
+            "use_for": "well-being, inequality, quality of life",
+            "url": "https://www.oecd.org/en/topics/sub-issues/measuring-well-being-and-progress/how-s-life.html",
+            "ref": "[16]",
+        },
+    ],
+}
 
-# -----------------------------------------------------------------------------
-# 4) TAB STRUKTUR
-# -----------------------------------------------------------------------------
-tab1, tab2, tab3 = st.tabs(
-    [
-        "🧭 Snapshot & Milestones",
-        "📜 Roadmap: Rules & Guidelines",
-        "🧩 Komite Review & Area Kebijakan",
-    ]
-)
+# =========================================================
+# Render resource cards
+# =========================================================
+items = resources.get(theme, [])
+for it in items:
+    st.markdown(
+        f"""
+<div class="card2">
+  <span class="badge">{it["tag"]}</span>
+  <h4 style="margin:10px 0 6px 0;">{it["title"]} <span class="small-muted">{it["ref"]}</span></h4>
+  <div class="small-muted" style="margin-bottom:10px;">Dipakai untuk: <b>{it["use_for"]}</b></div>
+  <div>{it["why"]}</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.link_button("Buka publikasi", it["url"])
 
-# =============================================================================
-# TAB 1
-# =============================================================================
-with tab1:
-    st.header("Milestone proses aksesi (ringkas)")
+st.markdown('<hr class="hr-soft">', unsafe_allow_html=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Council decision", "20 Feb 2024", "Start accession discussions")
-    c2.metric("Roadmap adopted", "29 Mar 2024", "Terms, conditions, process")
-    c3.metric("Initial Memorandum", "3 Jun 2025", "Start technical phase")
-    c4.metric("Komite review", "25", "Expert committees (Roadmap)")
+# =========================================================
+# “Cara pakai” yang eksplisit, biar nyambung ke dashboard kamu
+# =========================================================
+st.markdown("## Cara membaca angka World Bank dengan lensa OECD (praktis)")
+st.markdown(
+    """
+1) Angka WDI dipakai sebagai titik awal: lihat posisi Indonesia dan pembanding pada peta, lalu cek apakah berada di sekitar median atau sudah menembus kuartil atas/bawah.
 
-    st.markdown("---")
+2) Setelah posisi jelas, baca publikasi OECD untuk mengisi konteks yang biasanya tidak muncul di data mentah: struktur sektor, hambatan institusi, arah kebijakan, dan sumber risiko.
 
-    left, right = st.columns([1.4, 1])
-
-    with left:
-        st.subheader("Timeline visual")
-        ms_plot = milestones.sort_values("Tanggal").copy()
-        ms_plot["Urut"] = range(1, len(ms_plot) + 1)
-
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=ms_plot["Tanggal"],
-                y=ms_plot["Urut"],
-                mode="markers+text",
-                text=ms_plot["Peristiwa"],
-                textposition="top left",
-            )
-        )
-        fig.update_layout(
-            height=420,
-            xaxis_title="Tanggal",
-            yaxis_title="Urutan",
-            yaxis=dict(tickmode="array", tickvals=ms_plot["Urut"], ticktext=ms_plot["Urut"]),
-            margin=dict(l=20, r=20, t=40, b=20),
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.caption("Klik link di tabel untuk membuka sumber resmi.")
-
-    with right:
-        st.subheader("Tabel milestone")
-        show_cols = ["Tanggal", "Peristiwa", "Catatan", "Sumber", "Link"]
-        ms_table = milestones[show_cols].copy()
-        ms_table["Tanggal"] = ms_table["Tanggal"].dt.strftime("%Y-%m-%d")
-
-        st.dataframe(
-            ms_table,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Link": st.column_config.LinkColumn("Link sumber", display_text="buka"),
-            },
-        )
-
-        with st.expander("Makna Initial Memorandum (IM) dalam proses"):
-            st.markdown(
-                """
-IM adalah self-assessment awal yang memetakan keselarasan regulasi, kebijakan, dan praktik Indonesia dengan standar serta best practices OECD.
-IM menjadi titik masuk fase teknis: komite-komite OECD mulai melakukan review berbasis IM, background report, dan dialog mendalam.
+3) Untuk kebutuhan akademik, simpulkan dalam bentuk narasi kebijakan: “angka mengarah ke X”, “OECD menekankan Y”, lalu “implikasi yang logis untuk reform Z”.
 """
-            )
+)
 
-# =============================================================================
-# TAB 2
-# =============================================================================
-with tab2:
-    st.header("Roadmap sebagai rujukan rules & guidelines")
+# =========================================================
+# REFERENCES (angka gaya [1], biar konsisten dengan page2)
+# =========================================================
+with st.expander("📚 Referensi (tautan) — dasar interpretasi", expanded=False):
     st.markdown(
         """
-Roadmap mendefinisikan _terms, conditions, dan process_ untuk memastikan review yang konsisten lintas area kebijakan, lalu menutupnya dengan keputusan Council.
-Struktur Roadmap bisa dibaca sebagai “aturan main” dari awal proses sampai rekomendasi reform dan _formal opinions_.
+[1] Roadmap for the OECD Accession Process of Indonesia (C(2024)66/FINAL) — https://one.oecd.org/document/C(2024)66/FINAL/en/pdf  
+[2] OECD Accession process overview — https://www.oecd.org/en/about/legal/oecd-accession-process.html  
+[3] OECD Economic Surveys: Indonesia 2024 — https://www.oecd.org/en/publications/oecd-economic-surveys-indonesia-2024_de87555a-en.html  
+[4] OECD Economic Outlook (Country note: Indonesia, 2025 Issue 2) — https://www.oecd.org/en/publications/oecd-economic-outlook-volume-2025-issue-2_9f653ca1-en/full-report/indonesia_21d4d16b.html  
+[5] Going for Growth 2025 — https://www.oecd.org/en/publications/going-for-growth-2025_50613c70-en.html  
+[6] OECD Employment Outlook 2025 — https://www.oecd.org/en/publications/oecd-employment-outlook-2025_5d0e6655-en.html  
+[7] Education at a Glance 2025 — https://www.oecd.org/en/publications/education-at-a-glance-2025_8f738fff-en.html  
+[8] Health at a Glance 2025 — https://www.oecd.org/en/publications/health-at-a-glance-2025_7a7afb35-en.html  
+[9] Government at a Glance: Southeast Asia 2025 — https://www.oecd.org/content/dam/oecd/en/publications/reports/2025/12/government-at-a-glance-southeast-asia-2025_1b04332c/bc89cb32-en.pdf  
+[10] Society at a Glance 2025 — https://www.oecd.org/en/publications/society-at-a-glance-2025_c51363b5-en.html  
+[11] OECD TiVA dataset — https://www.oecd.org/en/data/datasets/trade-in-value-added.html  
+[12] OECD Trade Facilitation Indicators — https://www.oecd.org/en/data/datasets/trade-facilitation-indicators.html  
+[13] OECD STRI dataset — https://www.oecd.org/en/data/datasets/services-trade-restrictiveness-index.html  
+[14] OECD FDI Regulatory Restrictiveness Index — https://www.oecd.org/en/data/datasets/fdi-regulatory-restrictiveness-index.html  
+[15] Tax Administration 2025: Indonesia — https://www.oecd.org/en/publications/tax-administration-2025-indonesia_7b7f6d7a-en.html  
+[16] How’s Life? — https://www.oecd.org/en/topics/sub-issues/measuring-well-being-and-progress/how-s-life.html  
 """
     )
 
-    st.subheader("Tahapan inti (high-level steps)")
-    steps = pd.DataFrame(
-        [
-            ("1", "Council decision", "Council memutuskan membuka accession discussions"),
-            ("2", "Accession Roadmap", "Roadmap diadopsi, menjadi dokumen publik"),
-            ("3", "Initial Memorandum", "Self-assessment kandidat terhadap instrumen/standar OECD"),
-            ("4", "Committee reviews", "Review teknis oleh komite, dialog & rekomendasi perubahan"),
-            ("5", "Formal opinions", "Komite menyampaikan evaluasi resmi ke Council"),
-            ("6", "Council decision", "Council memutuskan undangan keanggotaan"),
-            ("7", "Accession", "Aksesi ke OECD Convention dan penyelesaian aspek legal/formal"),
-        ],
-        columns=["No", "Tahap", "Inti isi"],
-    )
-    st.dataframe(steps, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    colA, colB = st.columns([1, 1])
-
-    with colA:
-        st.subheader("Kewajiban keanggotaan (apa yang diuji)")
-        st.markdown(
-            """
-Ringkasan tema kewajiban dalam Roadmap:
-1. Adherensi pada nilai, rule of law, demokrasi, dan working methods OECD (peer review, konsensus).
-2. Penerimaan instrumen legal OECD yang berlaku pada saat undangan keanggotaan, dengan reservasi/observasi yang disepakati.
-3. Penerimaan aturan tata kelola organisasi, klasifikasi informasi, dan kontribusi finansial organisasi.
-4. Pengaturan privileges and immunities agar OECD dapat berfungsi independen.
-"""
-        )
-
-        with st.expander("Catatan praktis untuk baca Roadmap"):
-            st.markdown(
-                """
-Dua fokus review komite:
-- _Willingness & ability_ untuk menerapkan instrumen legal OECD pada area komite.
-- Kesesuaian kebijakan/praktik dengan best practices OECD (berbasis core principles di Roadmap).
-
-Output review:
-- Letter / isu dan rekomendasi per putaran dialog.
-- Formal opinion ketika komite menilai level alignment memadai.
-"""
-            )
-
-    with colB:
-        st.subheader("Policy areas yang dicakup (ringkas)")
-        df_areas = pd.DataFrame({"Policy area": policy_areas})
-        st.dataframe(df_areas, use_container_width=True, hide_index=True)
-
-        # Visual sederhana: count area
-        area_counts = pd.DataFrame({"Area": policy_areas, "Jumlah": [1] * len(policy_areas)})
-        fig_area = px.bar(area_counts, x="Area", y="Jumlah", title="Cakupan area Roadmap (indikatif)")
-        fig_area.update_layout(height=360, margin=dict(l=20, r=20, t=60, b=20))
-        st.plotly_chart(fig_area, use_container_width=True)
-
-    st.markdown("---")
-    st.subheader("Roadmap Navigator (ringkas per bagian)")
-    pick = st.selectbox(
-        "Pilih bagian Roadmap yang ingin ditampilkan ringkasannya",
-        [
-            "Shared values, vision and priorities",
-            "Obligations of OECD membership",
-            "Technical reviews by OECD committees",
-            "Initial Memorandum (IM)",
-            "Formal opinions and Council decision",
-        ],
-    )
-
-    if pick == "Shared values, vision and priorities":
-        st.markdown(
-            """
-Bagian ini menekankan “like-mindedness” dan komitmen pada working methods OECD.
-Council memonitor isu-isu nilai dan prioritas sepanjang proses, bukan hanya di akhir.
-"""
-        )
-    elif pick == "Obligations of OECD membership":
-        st.markdown(
-            """
-Bagian ini berisi daftar kewajiban: penerimaan OECD Convention, protokol, aturan tata kelola, instrumen legal substantif, serta aspek privileges & immunities.
-Poin-poin ini biasanya diterjemahkan menjadi kebutuhan penyesuaian regulasi dan tata kelola domestik.
-"""
-        )
-    elif pick == "Technical reviews by OECD committees":
-        st.markdown(
-            """
-Roadmap menetapkan komite-komite yang berwenang melakukan review dan mengeluarkan formal opinion.
-Prosesnya mencakup pengumpulan informasi, background report Sekretariat, dialog berulang, lalu kesimpulan.
-"""
-        )
-    elif pick == "Initial Memorandum (IM)":
-        st.markdown(
-            """
-IM adalah baseline dokumen: peta alignment awal Indonesia terhadap standar/instrumen OECD.
-IM membuka fase teknis yang lebih padat dan biasanya memicu daftar isu prioritas per komite.
-"""
-        )
-    else:
-        st.markdown(
-            """
-Ketika komite puas terhadap alignment, komite mengadopsi formal opinion.
-Council lalu mengambil keputusan final berdasarkan kumpulan formal opinions dan dokumen pendukung proses.
-"""
-        )
-
-# =============================================================================
-# TAB 3
-# =============================================================================
-with tab3:
-    st.header("Komite review dan area kebijakan")
-    st.markdown(
-        """
-Daftar komite di bawah ini diambil dari Roadmap Indonesia.
-Klasifikasi area bersifat ringkas untuk navigasi pembaca, bukan pengganti struktur formal OECD.
-"""
-    )
-
-    c1, c2 = st.columns([1, 1])
-    with c1:
-        q = st.text_input("Cari komite (keyword)", value="")
-    with c2:
-        area_filter = st.selectbox(
-            "Filter area",
-            ["Semua"] + sorted(committees["Area Roadmap (ringkas)"].unique().tolist()),
-        )
-
-    df = committees.copy()
-    if q.strip():
-        df = df[df["Komite"].str.contains(q.strip(), case=False, na=False)]
-    if area_filter != "Semua":
-        df = df[df["Area Roadmap (ringkas)"] == area_filter]
-
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    st.subheader("Distribusi komite per area (ringkas)")
-    dist = committees.groupby("Area Roadmap (ringkas)", as_index=False).size().rename(columns={"size": "Jumlah komite"})
-    fig_dist = px.bar(dist, x="Area Roadmap (ringkas)", y="Jumlah komite", title="Jumlah komite per area (ringkas)")
-    fig_dist.update_layout(height=420, margin=dict(l=20, r=20, t=60, b=20))
-    st.plotly_chart(fig_dist, use_container_width=True)
-
-    with st.expander("Apa yang biasanya diminta komite selama review?"):
-        st.markdown(
-            """
-Bentuk permintaan informasi yang sering muncul:
-- Klarifikasi regulasi (kerangka hukum, turunan, implementasi).
-- Evidence pelaksanaan kebijakan (data, prosedur, enforcement).
-- Rencana reform (timeline, penanggung jawab, indikator hasil).
-- Konsistensi dengan instrumen legal OECD dan best practices lintas negara anggota.
-"""
-        )
-
-# -----------------------------------------------------------------------------
-# FOOTER
-# -----------------------------------------------------------------------------
-st.markdown("---")
-st.caption(
-    "Sumber utama: OECD Accession Process page, Indonesia Accession Roadmap (adopted 29 Mar 2024), "
-    "OECD press releases (20 Feb 2024; 2 May 2024; 3 Jun 2025)."
-)
-
+st.caption("Catatan: Halaman ini ditulis untuk interpretasi deskriptif dan penyusunan narasi akademik. Tidak dimaksudkan sebagai inferensi kausal.")
