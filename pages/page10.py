@@ -1,387 +1,631 @@
-import streamlit as st
-import pandas as pd
+# pages/page10.py
 import os
+import base64
+import pandas as pd
+import streamlit as st
 import plotly.express as px
+import streamlit.components.v1 as components
 
 st.set_page_config(layout="wide", page_title="Energi & Lingkungan", page_icon="🌱")
 
-st.title("🌱 Energi & Lingkungan — Peta Dunia + Time Series")
+st.title("🌱 Energi & Lingkungan")
 st.write(
-    "Halaman ini menampilkan indikator Energi & Lingkungan berdasarkan file CSV yang berada "
-    "pada folder `data/`. Script ini otomatis mendeteksi format file (wide atau long) sehingga "
-    "file CO2 dengan kolom Year akan terbaca."
+    "Halaman ini menampilkan indikator energi dan lingkungan berbasis file CSV bergaya World Bank yang tersimpan di folder `data/`. "
+    "Tampilan mencakup statistik ringkas nilai terbaru per negara, peta dunia per tahun, interpretasi distribusi, analisis deskriptif, "
+    "time series per negara, serta integrasi dokumen kebijakan Second NDC Indonesia."
 )
 
-# -----------------------------
-# Folder data & daftar file CSV
-# -----------------------------
+with st.expander("📌 Definisi indikator (ringkas)", expanded=False):
+    st.markdown(
+        """
+**CO emissions** menggambarkan emisi karbon dioksida. Pada banyak dataset World Bank, satuan yang umum adalah emisi per kapita. Indikator ini membantu membaca tekanan emisi yang terkait dengan bauran energi, aktivitas ekonomi, dan intensitas konsumsi energi.
+
+**Renewable energy consumption** menggambarkan porsi konsumsi energi yang bersumber dari energi terbarukan dalam total konsumsi energi. Indikator ini membantu membaca arah transisi energi, namun tetap perlu dipadankan dengan tren emisi dan konteks struktur energi.
+
+**Forest area** menggambarkan luasan atau porsi kawasan berhutan. Indikator ini memberi konteks dinamika penyerapan karbon dan perubahan penggunaan lahan, terutama untuk membaca peran sektor FOLU dalam mitigasi.
+
+**Electricity access** menggambarkan persentase populasi yang memiliki akses listrik. Indikator ini sering dipakai sebagai penanda layanan dasar dan pembangunan, lalu dihubungkan dengan konsekuensi emisi melalui bauran pembangkit.
+"""
+    )
+
 DATA_DIR = "data"
 
 FILES = {
-    "CO2 emissions (metric tons per capita)": "10.1. CO EMISSIONS.csv",
-    "Electricity access (% of population)": "10.4. ELECTRICITY ACCESS.csv",
-    "Renewable energy consumption (% of total)": "10.2. RENEWABLE ENERGY CONSUMPTION.csv",
-    "Forest area (sq. km or % depending on file)": "10.3. FOREST AREA.csv",
+    "CO emissions (metric tons per capita)": [
+        "10.1 CO emissions.csv",
+        "10.1. CO emissions.csv",
+        "10.1. CO EMISSIONS.csv",
+        "10.1 CO EMISSIONS.csv",
+        "10.1. CO EMISSIONS (per capita).csv",
+    ],
+    "Renewable energy consumption (% of total)": [
+        "10.2 Renewable energy consumption.csv",
+        "10.2. Renewable energy consumption.csv",
+        "10.2. RENEWABLE ENERGY CONSUMPTION.csv",
+        "10.2 RENEWABLE ENERGY CONSUMPTION.csv",
+    ],
+    "Forest area (sq. km or % depending on file)": [
+        "10.3 Forest area.csv",
+        "10.3. Forest area.csv",
+        "10.3. FOREST AREA.csv",
+        "10.3 FOREST AREA.csv",
+    ],
+    "Electricity access (% of population)": [
+        "10.4 Electricity access.csv",
+        "10.4. Electricity access.csv",
+        "10.4. ELECTRICITY ACCESS.csv",
+        "10.4 ELECTRICITY ACCESS.csv",
+    ],
 }
 
-# -----------------------------
-# Loader CSV fleksibel
-# -----------------------------
+WDI_CODES = {
+    "CO emissions (metric tons per capita)": "EN.ATM.CO2E.PC",
+    "Renewable energy consumption (% of total)": "EG.FEC.RNEW.ZS",
+    "Forest area (sq. km or % depending on file)": "AG.LND.FRST.K2 (atau AG.LND.FRST.ZS tergantung file)",
+    "Electricity access (% of population)": "EG.ELC.ACCS.ZS",
+}
+
+SNDC_LENS = {
+    "CO emissions (metric tons per capita)": {
+        "sector": "Energy",
+        "points": [
+            "CO emissions membantu membaca intensitas emisi yang berkaitan dengan bauran energi dan efisiensi.",
+            "Pembacaan yang rapi memeriksa tren emisi bersama perubahan pangsa energi terbarukan dan perluasan akses listrik.",
+        ],
+    },
+    "Renewable energy consumption (% of total)": {
+        "sector": "Energy",
+        "points": [
+            "Pangsa energi terbarukan memberi sinyal perubahan bauran energi.",
+            "Kenaikan pangsa terbarukan lebih kuat maknanya jika diikuti stabilisasi atau penurunan emisi per kapita.",
+        ],
+    },
+    "Forest area (sq. km or % depending on file)": {
+        "sector": "FOLU",
+        "points": [
+            "Forest area relevan untuk membaca dinamika sektor FOLU dan potensi penyerapan karbon.",
+            "Stabilitas atau peningkatan luas hutan mendukung interpretasi strategi mitigasi lintas sektor.",
+        ],
+    },
+    "Electricity access (% of population)": {
+        "sector": "Energy",
+        "points": [
+            "Akses listrik adalah indikator layanan dasar dan prasyarat aktivitas ekonomi.",
+            "Dalam lensa Second NDC, perluasan akses idealnya sejalan dengan bauran pembangkit yang lebih bersih dan efisiensi.",
+        ],
+    },
+}
+
+SNDC_KEY_MESSAGES = [
+    "Second NDC menggunakan reference year 2019, mencakup sektor Energy, IPPU, Waste, Agriculture, dan FOLU.",
+    "Dokumen memakai metrik Global Warming Potential 100 tahun berdasarkan IPCC AR5 untuk konsistensi emisi setara CO2.",
+    "Dokumen menekankan target puncak emisi nasional pada 2030 dan lintasan menuju Net Zero Emissions 2060 atau lebih cepat.",
+]
+
+AGG_EXACT = {
+    "World",
+    "European Union",
+    "Euro area",
+    "OECD members",
+    "IDA & IBRD total",
+    "IBRD only",
+    "IDA total",
+    "IDA blend",
+    "IDA only",
+    "Heavily indebted poor countries (HIPC)",
+    "Least developed countries: UN classification",
+    "Fragile and conflict affected situations",
+}
+
+AGG_SUBSTR = [
+    " income",
+    "oecd",
+    "ida",
+    "ibrd",
+    "hipc",
+    "euro area",
+    "european union",
+    "arab world",
+    "central europe and the baltics",
+    "east asia & pacific",
+    "europe & central asia",
+    "latin america & caribbean",
+    "middle east & north africa",
+    "north america",
+    "south asia",
+    "sub-saharan africa",
+    "small states",
+    "developing",
+    "dividend",
+    "total",
+    "excluding",
+    "members",
+]
+
+def is_aggregate_entity(name: str) -> bool:
+    if not isinstance(name, str):
+        return True
+    n = name.strip()
+    if n in AGG_EXACT:
+        return True
+    if " & " in n:
+        return True
+    low = n.lower()
+    for t in AGG_SUBSTR:
+        if t in low:
+            return True
+    return False
+
+def orientation(indicator_label: str) -> str:
+    low = indicator_label.lower()
+    if "co emissions" in low:
+        return "higher_worse"
+    if "renewable" in low:
+        return "higher_better"
+    if "forest" in low:
+        return "higher_better"
+    if "electricity" in low:
+        return "higher_better"
+    return "neutral"
+
 @st.cache_data
-def load_csv_clean(path: str) -> pd.DataFrame:
-    """Coba beberapa separator umum dan lewati baris rusak. Kembalikan DataFrame kosong jika file tidak ada."""
-    if not os.path.exists(path):
-        return pd.DataFrame()
+def load_csv_tolerant(path: str) -> pd.DataFrame:
     for sep in [";", ",", "\t"]:
         try:
             df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
-            # Jika parsing menghasilkan >1 kolom, anggap berhasil
             if df.shape[1] > 1:
                 return df
         except Exception:
-            pass
-    # fallback: biarkan pandas coba tebak
+            continue
+    return pd.read_csv(path, engine="python", on_bad_lines="skip")
+
+def pick_existing_file(candidates: list[str]) -> str | None:
+    for fname in candidates:
+        p = os.path.join(DATA_DIR, fname)
+        if os.path.exists(p):
+            return p
+    if os.path.isdir(DATA_DIR):
+        all_files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".csv")]
+        for cand in candidates:
+            key = cand.lower().replace(".csv", "")
+            for f in all_files:
+                if key in f.lower():
+                    return os.path.join(DATA_DIR, f)
+    return None
+
+def clean_numeric_series(raw: pd.Series) -> pd.Series:
+    s = raw.astype(str).str.strip()
+    s = s.replace({"..": "", "NA": "", "N/A": "", "nan": "", "None": ""})
+
+    has_comma = s.str.contains(",", na=False)
+    has_dot = s.str.contains(r"\.", na=False)
+
+    s.loc[has_comma & has_dot] = s.loc[has_comma & has_dot].str.replace(",", "", regex=False)
+    s.loc[has_comma & ~has_dot] = s.loc[has_comma & ~has_dot].str.replace(",", ".", regex=False)
+
+    s = s.str.replace("\u00a0", "", regex=False)
+    return pd.to_numeric(s, errors="coerce")
+
+def fmt(v, digits=2) -> str:
     try:
-        return pd.read_csv(path, engine="python", on_bad_lines="skip")
+        return f"{float(v):,.{digits}f}"
     except Exception:
-        return pd.DataFrame()
+        return "NA"
+
+def find_country_col(cols) -> str:
+    for cand in ["Country Name", "country", "Country", "Negara", "Entity"]:
+        if cand in cols:
+            return cand
+    return cols[0]
+
+@st.cache_data
+def read_pdf_bytes(path: str) -> bytes | None:
+    if not os.path.exists(path):
+        return None
+    with open(path, "rb") as f:
+        return f.read()
+
+def resolve_sndc_path() -> str | None:
+    candidates = [
+        "Second NDC Indonesia.pdf",
+        os.path.join("assets", "Second NDC Indonesia.pdf"),
+        os.path.join("docs", "Second NDC Indonesia.pdf"),
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return None
+
+def render_pdf_inline(pdf_bytes: bytes, height: int = 680):
+    b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+    html = f"""
+    <iframe
+        src="data:application/pdf;base64,{b64}"
+        width="100%"
+        height="{height}"
+        style="border:1px solid rgba(0,0,0,0.08); border-radius:14px;"
+    ></iframe>
+    """
+    components.html(html, height=height + 10, scrolling=True)
 
 # -----------------------------
-# Deteksi file yang tersedia
+# Pilih indikator dan load data
 # -----------------------------
-available_files = []
-for label, fname in FILES.items():
-    if os.path.exists(os.path.join(DATA_DIR, fname)):
-        available_files.append(label)
+available = {}
+for label, candidates in FILES.items():
+    p = pick_existing_file(candidates)
+    if p:
+        available[label] = p
 
-if not available_files:
-    st.error(f"Tidak ada file CSV Page 10 ditemukan dalam folder `{DATA_DIR}/`.\n\nPastikan file ditempatkan di folder `data/` dan nama file mengikuti mapping pada kode.")
+if not available:
+    st.error(f"Tidak ada file CSV Page 10 ditemukan di folder `{DATA_DIR}/`.")
     st.stop()
 
-# -----------------------------
-# Pilih indikator + Load data
-# -----------------------------
-indicator = st.selectbox("📌 Pilih indikator Energi & Lingkungan:", available_files)
-file_path = os.path.join(DATA_DIR, FILES[indicator])
+indicator = st.selectbox("Pilih indikator", list(available.keys()))
+file_path = available[indicator]
 
-df = load_csv_clean(file_path)
+df = load_csv_tolerant(file_path)
 if df.empty:
-    st.error(f"File `{os.path.basename(file_path)}` kosong atau gagal dibaca. Periksa file dan struktur CSV.")
+    st.error("File terbaca kosong atau gagal diproses.")
     st.stop()
 
-st.subheader("📄 Preview data (sample)")
+st.subheader("📄 Preview Data Mentah")
 st.dataframe(df.head(15), use_container_width=True)
 
 # -----------------------------
-# IDENTIFIKASI FORMAT: LONG vs WIDE
+# Transform ke long format
 # -----------------------------
-cols_raw = [str(c).strip() for c in df.columns]
-cols_lower = [c.lower() for c in cols_raw]
+cols = [str(c) for c in df.columns]
+cols_lower = [c.lower().strip() for c in cols]
 
-# fungsi bantu: cari nama kolom country candidate
-def find_country_col(df_cols):
-    candidates = ["country name", "country", "negara", "entity"]
-    for cand in candidates:
-        for c in df_cols:
-            if c.lower() == cand:
-                return c
-    # fallback: kolom pertama
-    return df_cols[0]
+df_long = pd.DataFrame()
 
-df_long = pd.DataFrame()  # inisialisasi
-
-# jika ada kolom 'Year' atau 'year' -> long format (country, year, value)
 if "year" in cols_lower:
-    st.info("Format data terdeteksi: **LONG format** (kolom Year present).")
-    # normalisasi nama country dan year
     rename_map = {}
     for c in df.columns:
-        if c.lower() in ["country", "country name", "negara", "entity"]:
+        cl = str(c).strip().lower()
+        if cl in ["country", "country name", "negara", "entity"]:
             rename_map[c] = "country"
-        if c.lower() == "year":
+        if cl == "year":
             rename_map[c] = "year"
     df2 = df.rename(columns=rename_map)
+
     if "country" not in df2.columns or "year" not in df2.columns:
-        st.error("Kolom country atau year tidak ditemukan setelah normalisasi. Periksa header CSV.")
+        st.error("Kolom country atau year tidak ditemukan pada format long.")
         st.stop()
-    # cari kolom nilai (semua kolom selain country/year) — idealnya hanya 1
+
     value_cols = [c for c in df2.columns if c not in ["country", "year"]]
-    if len(value_cols) == 0:
-        st.error("Tidak ditemukan kolom nilai pada file long-format.")
+    if not value_cols:
+        st.error("Tidak ditemukan kolom nilai pada format long.")
         st.stop()
-    # jika lebih dari satu kolom value, pilih kolom terakhir yang mungkin berisi nilai
-    value_col = value_cols[0] if len(value_cols) == 1 else value_cols[-1]
-    df_long = df2[["country", "year", value_col]].copy()
-    df_long = df_long.rename(columns={value_col: "value"})
-    # numeric
+
+    value_col = value_cols[0] if len(value_cols) == 1 else st.selectbox("Pilih kolom nilai", value_cols)
+    df_long = df2[["country", "year", value_col]].rename(columns={value_col: "value"}).copy()
     df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce")
-    df_long["value"] = pd.to_numeric(df_long["value"], errors="coerce")
+    df_long["value"] = clean_numeric_series(df_long["value"])
     df_long = df_long.dropna(subset=["year", "value"])
 else:
-    # WIDE format: cari kolom tahun di header (1990, 2000, ...)
-    years = [c for c in cols_raw if c.isdigit() and len(c) == 4]
-    if not years:
-        st.error("Tidak ditemukan kolom tahun (misal 1990, 2005, dst.) di file ini. Periksa header CSV.")
+    year_cols = [c for c in cols if c.isdigit() and len(c) == 4]
+    if not year_cols:
+        st.error("Tidak ditemukan kolom tahun (4 digit) pada format wide.")
         st.stop()
-    st.info("Format data terdeteksi: **WIDE format** (kolom tahun di header).")
+
     country_col = find_country_col(df.columns)
-    try:
-        df_long = df.melt(
-            id_vars=[country_col],
-            value_vars=years,
-            var_name="year",
-            value_name="value"
-        )
-        df_long = df_long.rename(columns={country_col: "country"})
-        df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce")
-        df_long["value"] = pd.to_numeric(df_long["value"], errors="coerce")
-        df_long = df_long.dropna(subset=["value"])
-    except Exception as e:
-        st.error("Gagal transformasi dari wide ke long. Periksa struktur CSV.")
-        st.exception(e)
-        st.stop()
+    df_long = df.melt(
+        id_vars=[country_col],
+        value_vars=year_cols,
+        var_name="year",
+        value_name="value",
+    ).rename(columns={country_col: "country"}).copy()
 
-# cek hasil transformasi
-if df_long.empty:
-    st.error("Data kosong setelah transformasi. Pastikan file berisi nilai numerik dan kolom tahun valid.")
-    st.stop()
+    df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce")
+    df_long["value"] = clean_numeric_series(df_long["value"])
+    df_long = df_long.dropna(subset=["year", "value"])
 
-# normalisasi nama negara (strip)
 df_long["country"] = df_long["country"].astype(str).str.strip()
+df_long["year"] = df_long["year"].astype(int)
 
-# -----------------------------
-# Pilih tahun untuk peta dunia
-# -----------------------------
-years_sorted = sorted(df_long["year"].unique().astype(int).tolist())
-if not years_sorted:
-    st.error("Tidak ada tahun valid pada data setelah parsing.")
+df_long = df_long[~df_long["country"].apply(is_aggregate_entity)].copy()
+if df_long.empty:
+    st.error("Data kosong setelah menghapus agregat regional dan kelompok pendapatan.")
     st.stop()
 
-st.subheader("🔢 Opsi Peta")
-colp1, colp2 = st.columns([3, 1])
-with colp2:
-    mode = st.radio("Mode warna peta", ("Continuous (nilai)", "Quantile (buckets)"))
-    # opsi skala warna continuous
-    color_scale = st.selectbox("Color scale (continuous):", ["Viridis", "Plasma", "Cividis", "Turbo", "Blues"], index=0)
+# -----------------------------
+# Statistik ringkas nilai terbaru per negara
+# -----------------------------
+st.subheader("🔎 Statistik Ringkas (nilai terbaru per negara)")
 
-with colp1:
-    year_select = st.slider(
-        "Pilih tahun untuk peta dunia:",
-        int(min(years_sorted)),
-        int(max(years_sorted)),
-        int(max(years_sorted))
-    )
+df_latest = (
+    df_long.sort_values(["country", "year"])
+    .groupby("country", as_index=False)
+    .tail(1)
+    .rename(columns={"year": "latest_year", "value": "latest_value"})
+)
 
-df_map = df_long[df_long["year"] == int(year_select)]
+top10 = df_latest.sort_values("latest_value", ascending=False).head(10).reset_index(drop=True)
+bottom10 = df_latest.sort_values("latest_value", ascending=True).head(10).reset_index(drop=True)
 
-st.subheader(f"🌍 Peta Dunia — {indicator} ({year_select})")
+c1, c2 = st.columns(2)
+with c1:
+    st.markdown("**Top 10 (terbesar)**")
+    st.dataframe(top10[["country", "latest_value"]], use_container_width=True, hide_index=True)
+with c2:
+    st.markdown("**Bottom 10 (terendah)**")
+    st.dataframe(bottom10[["country", "latest_value"]], use_container_width=True, hide_index=True)
+
+# -----------------------------
+# Second NDC lens yang mengikuti indikator
+# -----------------------------
+lens = SNDC_LENS.get(indicator)
+if lens:
+    with st.expander("📌 Second NDC lens untuk indikator yang dipilih", expanded=True):
+        st.markdown(f"**Keterkaitan sektor Second NDC**: {lens['sector']}")
+        for p in lens["points"]:
+            st.write(f"• {p}")
+        st.caption("Lens ini dipakai sebagai konteks membaca tren, bukan sebagai klaim kausal.")
+
+# -----------------------------
+# Peta dunia
+# -----------------------------
+years = sorted(df_long["year"].unique().tolist())
+year_min = int(min(years))
+year_max = int(max(years))
+
+st.subheader("🌍 Peta Dunia")
+
+left, right = st.columns([3, 1])
+with right:
+    map_mode = st.radio("Mode peta", ["Continuous (nilai)", "Quantile (buckets)"])
+    color_scale = st.selectbox("Skala warna", ["Viridis", "Plasma", "Cividis", "Turbo", "Blues"], index=0)
+with left:
+    year_select = st.slider("Pilih tahun", year_min, year_max, year_max)
+
+df_map = df_long[df_long["year"] == int(year_select)].copy()
+
 if df_map.empty:
     st.warning("Tidak ada data untuk tahun yang dipilih.")
 else:
     try:
-        # gunakan choropleth dengan country names
-        fig = px.choropleth(
-            df_map,
-            locations="country",
-            locationmode="country names",
-            color="value",
-            hover_name="country",
-            color_continuous_scale=color_scale.lower() if color_scale.lower() in px.colors.named_colorscales() else "Viridis",
-            labels={"value": indicator},
-            title=f"{indicator} — {year_select}"
-        )
-        # jika quantile, ubah colorbar/breaks — menggunakan choropleth langsung tidak support buckets mudah,
-        # tetapi user sudah dapat memilih color scale; advanced bucket mapping bisa ditambahkan jika mau.
-        fig.update_layout(margin={"r":0,"l":0,"t":30,"b":0}, height=520)
+        if map_mode == "Quantile (buckets)":
+            q = df_map["value"].dropna()
+            if q.shape[0] < 5:
+                fig = px.choropleth(
+                    df_map,
+                    locations="country",
+                    locationmode="country names",
+                    color="value",
+                    hover_name="country",
+                    color_continuous_scale=color_scale,
+                    labels={"value": indicator},
+                    title=f"{indicator} ({year_select})",
+                )
+            else:
+                df_map["bucket"] = pd.qcut(df_map["value"], 4, labels=["Q1", "Q2", "Q3", "Q4"])
+                fig = px.choropleth(
+                    df_map,
+                    locations="country",
+                    locationmode="country names",
+                    color="bucket",
+                    hover_name="country",
+                    title=f"{indicator} ({year_select})",
+                    labels={"bucket": "Kelompok kuartil"},
+                )
+        else:
+            fig = px.choropleth(
+                df_map,
+                locations="country",
+                locationmode="country names",
+                color="value",
+                hover_name="country",
+                color_continuous_scale=color_scale,
+                labels={"value": indicator},
+                title=f"{indicator} ({year_select})",
+            )
+
+        fig.update_layout(margin={"r": 0, "t": 40, "l": 0, "b": 0}, height=540)
         st.plotly_chart(fig, use_container_width=True)
     except Exception as e:
-        st.error("❌ Peta gagal dibuat. Periksa kesesuaian nama negara (gunakan country names yang diakui oleh plotly).")
+        st.error("Peta gagal dibuat. Nama negara perlu sesuai standar Plotly.")
         st.exception(e)
 
 # -----------------------------
-# Grafik Time Series
+# Interpretasi peta
 # -----------------------------
-st.subheader("📈 Grafik Time Series per Negara")
+st.subheader("🧠 Interpretasi peta (tahun terpilih)")
+
+vals = df_map["value"].dropna()
+n = int(vals.shape[0])
+
+if n < 5:
+    st.write("Data pada tahun terpilih terlalu sedikit untuk interpretasi distribusi.")
+else:
+    q25, q50, q75 = vals.quantile([0.25, 0.50, 0.75]).tolist()
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Jumlah negara (ada data)", f"{n:,}")
+    m2.metric("Kuartil 1 (Q1)", fmt(q25))
+    m3.metric("Median (Q2)", fmt(q50))
+    m4.metric("Kuartil 3 (Q3)", fmt(q75))
+
+    o = orientation(indicator)
+    if o == "higher_worse":
+        st.markdown(
+            "Distribusi kuartil memecah negara menjadi empat kelompok pada tahun terpilih. "
+            "Nilai di atas Q3 menggambarkan kelompok dengan tekanan emisi lebih tinggi pada tahun itu, "
+            "sedangkan nilai di bawah Q1 menggambarkan kelompok dengan tekanan emisi lebih rendah. "
+            "Pembacaan yang lebih kuat memeriksa tren beberapa tahun, lalu mengaitkannya dengan bauran energi dan efisiensi."
+        )
+    else:
+        st.markdown(
+            "Distribusi kuartil memecah negara menjadi empat kelompok pada tahun terpilih. "
+            "Nilai di atas Q3 menggambarkan kelompok capaian lebih tinggi, sedangkan nilai di bawah Q1 menggambarkan kelompok capaian lebih rendah. "
+            "Pembacaan yang lebih kuat memeriksa konsistensi tren dan keterkaitannya dengan faktor struktural seperti infrastruktur dan tata kelola."
+        )
+
+# -----------------------------
+# Grafik time series per negara
+# -----------------------------
+st.subheader("📈 Time Series per Negara")
 
 country_list = sorted(df_long["country"].dropna().unique().tolist())
-if not country_list:
-    st.info("Tidak ada daftar negara tersedia.")
+default_countries = ["Indonesia"] if "Indonesia" in country_list else ([country_list[0]] if country_list else [])
+
+selected_countries = st.multiselect(
+    "Pilih negara (bisa lebih dari satu)",
+    country_list,
+    default=default_countries,
+)
+
+df_ts = df_long[df_long["country"].isin(selected_countries)].sort_values(["country", "year"])
+
+if df_ts.empty:
+    st.info("Tidak ada data untuk negara yang dipilih.")
 else:
-    default_country = "Indonesia" if "Indonesia" in country_list else country_list[0]
-    selected_countries = st.multiselect(
-        "Pilih negara (bisa lebih dari satu):",
-        country_list,
-        default=[default_country]
+    fig_ts = px.line(
+        df_ts,
+        x="year",
+        y="value",
+        color="country",
+        markers=True,
+        labels={"year": "Tahun", "value": indicator, "country": "Negara"},
+        title=f"Time series {indicator}",
     )
-
-    df_ts = df_long[df_long["country"].isin(selected_countries)].sort_values(["country", "year"])
-    if df_ts.empty:
-        st.info("Tidak ada data time series untuk negara yang dipilih.")
-    else:
-        fig_ts = px.line(
-            df_ts,
-            x="year",
-            y="value",
-            color="country",
-            markers=True,
-            labels={"year": "Tahun", "value": indicator, "country": "Negara"},
-            title=f"Time series — {indicator}"
-        )
-        fig_ts.update_layout(xaxis=dict(dtick=5), margin={"l": 0, "r": 0, "t": 30, "b": 0})
-        st.plotly_chart(fig_ts, use_container_width=True)
-
-        st.dataframe(df_ts.reset_index(drop=True), use_container_width=True)
-
-# -----------------------------
-# Statistik ringkas & top/bottom
-# -----------------------------
-st.subheader("🔎 Statistik Ringkas")
-
-agg_latest = df_long.groupby("country").apply(lambda g: g[g["year"] == g["year"].max()]["value"].mean() if not g.empty else None).reset_index()
-agg_latest.columns = ["country", "latest_value"]
-agg_latest = agg_latest.dropna(subset=["latest_value"]).sort_values("latest_value", ascending=False)
-
-col_top, col_bot = st.columns(2)
-with col_top:
-    st.markdown("**Top 10 (terbesar)**")
-    st.table(agg_latest.head(10).style.format({"latest_value": "{:,.2f}"}))
-with col_bot:
-    st.markdown("**Bottom 10 (terendah)**")
-    st.table(agg_latest.tail(10).sort_values("latest_value", ascending=True).style.format({"latest_value": "{:,.2f}"}))
-
+    fig_ts.update_layout(margin={"l": 0, "r": 0, "t": 40, "b": 0})
+    st.plotly_chart(fig_ts, use_container_width=True)
+    st.dataframe(df_ts.reset_index(drop=True), use_container_width=True)
 
 # =============================
 # TEMUAN UTAMA / ANALISIS DATA
 # =============================
-
 st.subheader("🔍 Temuan Utama & Interpretasi Data")
 
-st.markdown("""
+st.markdown(
+    """
 ### 1️⃣ Emisi CO₂ Tidak Selalu Mencerminkan Tingkat Industrialisasi
 
-Berdasarkan indikator **CO₂ emissions**, beberapa negara yang muncul pada kelompok nilai tertinggi 
-tidak seluruhnya merupakan negara dengan tingkat industrialisasi yang tinggi atau memiliki kegiatan industri yang maju. 
-Hal ini menunjukkan bahwa **tingginya emisi CO₂ tidak dapat langsung diinterpretasikan sebagai tingkat industrialisasi yang tinggi**.
+Berdasarkan indikator **CO emissions**, beberapa negara yang muncul pada kelompok nilai tertinggi tidak seluruhnya merupakan negara dengan tingkat industrialisasi yang tinggi atau memiliki kegiatan industri yang maju. Pola ini menunjukkan bahwa tingginya emisi CO₂ tidak dapat langsung diinterpretasikan sebagai tingkat industrialisasi yang tinggi.
 
-Pada negara-negara berkembang atau wilayah konflik, emisi dapat meningkat akibat:
-- penggunaan energi fosil yang tidak efisien,
-- ketergantungan pada pembangkit listrik berbasis diesel,
-- keterbatasan teknologi ramah lingkungan,
-- serta lemahnya infrastruktur energi.
+Pada negara berkembang atau wilayah konflik, emisi dapat meningkat karena penggunaan energi fosil yang tidak efisien, ketergantungan pada pembangkit berbasis diesel, keterbatasan teknologi yang lebih bersih, dan kelemahan infrastruktur energi. Pada konteks ini, emisi tinggi lebih dekat dengan gambaran inefisiensi sistem energi dibanding kekuatan industrialisasi.
+"""
+)
 
-Dengan demikian, emisi CO₂ yang tinggi pada kelompok negara ini lebih mencerminkan **inefisiensi sistem energi**, 
-bukan kekuatan dari industrialisasinya.
-""")
-
-st.markdown("""
+st.markdown(
+    """
 ### 2️⃣ Karakteristik Negara Industri Maju
 
-Negara-negara industri seperti **Jepang, Jerman, dan Belgia** menunjukkan pola yang berbeda, yaitu:
-- emisi CO₂ relatif tinggi namun **lebih stabil secara time series**,
-- tingkat **akses listrik mendekati 100%**,
-- serta peningkatan penggunaan **energi terbarukan**.
+Negara industri seperti **Jepang, Jerman, dan Belgia** sering menunjukkan pola yang berbeda. Emisi CO₂ berada pada level relatif tinggi, namun cenderung lebih stabil pada time series. Di saat yang sama, akses listrik mendekati penuh dan proporsi energi terbarukan cenderung meningkat. Pola tersebut konsisten dengan fase pengelolaan emisi dan transisi energi yang berjalan bersamaan dengan kapasitas industri yang sudah matang.
+"""
+)
 
-Pola ini mencerminkan bahwa negara industri cenderung telah memasuki fase 
-**pengelolaan emisi dan transisi energi**, bukan sekadar ekspansi produksi.
-""")
-
-st.markdown("""
+st.markdown(
+    """
 ### 3️⃣ Akses Listrik sebagai Indikator Fundamental Pembangunan Suatu Negara
 
-Indikator **Electricity Access** menunjukkan kesenjangan yang jelas antar negara.
-Negara dengan akses listrik rendah umumnya memiliki:
-- aktivitas ekonomi terbatas,
-- tingkat industrialisasi rendah,
-- serta emisi CO₂ yang rendah bukan karena keberlanjutan, 
-  melainkan keterbatasan pembangunan.
+Indikator **Electricity access** menunjukkan kesenjangan yang jelas antar negara. Negara dengan akses listrik rendah sering memiliki aktivitas ekonomi yang lebih terbatas. Emisi CO₂ yang rendah pada kelompok ini tidak selalu mencerminkan keberlanjutan, namun dapat merefleksikan keterbatasan pembangunan dan konsumsi energi. Akses listrik yang tinggi berperan sebagai prasyarat bagi produktivitas, layanan dasar, dan aktivitas industri.
+"""
+)
 
-Sebaliknya, akses listrik yang tinggi merupakan prasyarat utama bagi pertumbuhan industri 
-dan tolok ukur dalam pembangunan ekonomi dan kesejahteraan suatu negara.
-""")
-
-st.markdown("""
+st.markdown(
+    """
 ### 4️⃣ Energi Terbarukan dan Struktur Energi Negara Berkembang
 
-Beberapa negara berkembang menunjukkan proporsi **energi terbarukan yang relatif tinggi**.
-Namun, hal ini sering kali disebabkan oleh:
-- ketergantungan pada biomassa dan hidro tradisional,
-- bukan karena adopsi teknologi energi hijau yang maju.
+Beberapa negara berkembang menunjukkan proporsi **energi terbarukan** yang relatif tinggi. Pola ini tidak selalu berarti adopsi teknologi energi hijau yang maju. Pada sejumlah konteks, proporsi terbarukan tinggi dapat muncul karena ketergantungan pada biomassa tradisional atau hidro yang telah lama digunakan. Interpretasi pangsa energi terbarukan lebih kuat jika diperiksa bersama tren emisi, akses listrik, dan indikator kesejahteraan.
+"""
+)
 
-Oleh karena itu, tingginya pangsa energi terbarukan pada negara tertentu 
-perlu diinterpretasikan dengan hati-hati dan tidak selalu mencerminkan keberhasilan transisi energi.
-""")
+st.markdown(
+    """
+### 5️⃣ Forest Area dan Trade off Pembangunan
 
-st.markdown("""
-### 5️⃣ Forest Area dan Trade-off Pembangunan
-
-Indikator **Forest Area** menunjukkan adanya trade-off antara:
-- ekspansi ekonomi,
-- pembangunan energi,
-- dan keberlanjutan lingkungan.
-
-Negara dengan emisi dan konsumsi energi tinggi cenderung mengalami tekanan terhadap luas hutan, 
-sementara negara dengan hutan luas belum tentu memiliki emisi rendah jika aktivitas ekstraktif meningkat.
-""")
+Indikator **Forest area** sering merefleksikan trade off antara ekspansi ekonomi, pembangunan energi, dan keberlanjutan lingkungan. Negara dengan konsumsi energi dan emisi tinggi dapat menghadapi tekanan terhadap hutan melalui ekspansi lahan dan aktivitas ekstraktif. Negara dengan hutan luas pun dapat mengalami tekanan jika intensitas ekstraksi meningkat. Karena itu, pembacaan forest area perlu ditempatkan pada konteks perubahan tata guna lahan dan kualitas tata kelola.
+"""
+)
 
 # =============================
 # TAMBAHAN: SECOND NDC INDONESIA
 # =============================
+st.markdown(
+    """
+### 6️⃣ Second NDC Indonesia sebagai Lensa Interpretasi Indikator
 
-st.markdown("""
-### 6️⃣ Second NDC Indonesia (2025) sebagai Lensa Interpretasi Indikator
+Second Nationally Determined Contribution Indonesia menempatkan pembacaan indikator energi dan lingkungan dalam kerangka target nasional yang lebih eksplisit. Dokumen ini menggunakan reference year 2019, mencakup sektor Energy, IPPU, Waste, Agriculture, dan FOLU, serta memakai metrik Global Warming Potential 100 tahun berdasarkan IPCC AR5 untuk konsistensi perhitungan emisi setara CO2. Dokumen menekankan puncak emisi nasional pada 2030 dan lintasan menuju Net Zero Emissions 2060 atau lebih cepat.
 
-Second Nationally Determined Contribution (Second NDC) Indonesia menempatkan pembacaan data emisi dan energi
-dalam kerangka target nasional yang lebih eksplisit. Dokumen ini menggunakan **reference year 2019**, mencakup
-lima sektor **Energy, IPPU, Waste, Agriculture, dan FOLU**, serta memakai metrik **Global Warming Potential (GWP)
-100 tahun** untuk konsistensi perhitungan emisi setara CO₂. Dalam proyeksi 2025–2035, dokumen menekankan bahwa
-**puncak emisi nasional ditargetkan pada 2030**, lalu lintasan emisi perlu mengarah ke target **Net Zero Emissions 2060
-atau lebih cepat**.
+Implikasi terhadap pembacaan indikator di halaman ini:
 
-Implikasinya terhadap pembacaan indikator di halaman ini:
+1. **CO emissions** dan **Renewable energy consumption** membantu membaca arah transisi energi. Tren penurunan emisi per kapita bersamaan dengan kenaikan pangsa energi terbarukan lebih konsisten dengan upaya menjaga peaking 2030 dan menguatkan dekarbonisasi sektor energi.
 
-1. **CO₂ emissions** dan **Renewable energy consumption** dapat dibaca sebagai sinyal arah transisi energi.
-   Tren penurunan emisi per kapita bersamaan dengan kenaikan pangsa energi terbarukan lebih konsisten
-   dengan upaya menjaga peaking 2030 dan menguatkan dekarbonisasi sektor energi.
+2. **Electricity access** memberi konteks layanan dasar. Kenaikan akses listrik penting untuk kesejahteraan, namun konsekuensi emisinya ditentukan oleh bauran pembangkit. Perluasan akses idealnya bergerak bersama efisiensi dan peningkatan energi bersih.
 
-2. **Electricity access** memberi konteks pembangunan yang setara. Kenaikan akses listrik penting untuk
-   pertumbuhan dan kesejahteraan, namun konsekuensi emisinya bergantung pada bauran energi yang dipakai.
-   Dalam kerangka Second NDC, perluasan akses idealnya diiringi perbaikan efisiensi dan peningkatan porsi energi bersih.
+3. **Forest area** relevan untuk membaca dinamika FOLU. Stabilitas atau peningkatan tutupan hutan mendukung interpretasi strategi pengendalian deforestasi, restorasi, dan penguatan penyerapan karbon.
+"""
+)
 
-3. **Forest area** relevan untuk membaca dinamika FOLU. Stabilitas atau peningkatan tutupan hutan mendukung
-   strategi pengendalian deforestasi, restorasi, dan penguatan penyerapan karbon, yang menjadi bagian penting
-   dalam target lintas sektor.
-""")
-
-st.success("""
-🔎 **Kesimpulan Umum**  
-Analisis lintas indikator menunjukkan bahwa pembangunan berkelanjutan 
-tidak dapat diukur hanya dari satu indikator lingkungan. 
-Pendekatan multidimensi diperlukan untuk memahami hubungan antara energi, lingkungan, 
-dan tingkat pembangunan ekonomi.
-""")
-
+st.success(
+    "🔎 Kesimpulan Umum\n\n"
+    "Analisis lintas indikator menunjukkan bahwa pembangunan berkelanjutan tidak dapat dibaca dari satu indikator saja. "
+    "Pembacaan yang lebih kuat memadankan indikator energi, emisi, layanan dasar, dan kondisi lingkungan dalam satu narasi."
+)
 
 # -----------------------------
-# Download Full Data (long)
+# Integrasi dokumen PDF Second NDC
 # -----------------------------
-st.subheader("📥 Ekspor Data (long format)")
-csv = df_long.to_csv(index=False)
-safe_name = indicator.replace(" ", "_").replace("/", "_").replace("(", "").replace(")", "")
+with st.expander("📄 Dokumen kebijakan: Second NDC Indonesia (PDF)", expanded=False):
+    sndc_path = resolve_sndc_path()
+    if sndc_path is None:
+        st.warning("File PDF belum ditemukan. Pastikan nama file persis: `Second NDC Indonesia.pdf` dan berada di root repo atau folder assets.")
+    else:
+        pdf_bytes = read_pdf_bytes(sndc_path)
+        if pdf_bytes is None:
+            st.warning("File PDF ditemukan tetapi tidak bisa dibaca.")
+        else:
+            st.markdown("Ringkasan poin kunci yang dipakai sebagai konteks pembacaan halaman ini:")
+            for msg in SNDC_KEY_MESSAGES:
+                st.write(f"• {msg}")
+            st.download_button(
+                "⬇ Download PDF Second NDC",
+                data=pdf_bytes,
+                file_name="Second NDC Indonesia.pdf",
+                mime="application/pdf",
+            )
+            st.caption("Preview di bawah ini diambil langsung dari file PDF yang ada di repo.")
+            render_pdf_inline(pdf_bytes, height=720)
+
+# -----------------------------
+# Download data long format
+# -----------------------------
+st.subheader("📘 Data Lengkap (long format)")
+csv_bytes = df_long.to_csv(index=False).encode("utf-8")
+safe = (
+    indicator.replace(" ", "_")
+    .replace("/", "_")
+    .replace("(", "")
+    .replace(")", "")
+    .replace("%", "pct")
+)
 st.download_button(
-    label="⬇ Download CSV (long)",
-    data=csv,
-    file_name=f"page10_{safe_name}_{year_select}.csv",
-    mime="text/csv"
+    "⬇ Download data (CSV)",
+    data=csv_bytes,
+    file_name=f"page10_energi_lingkungan_{safe}.csv",
+    mime="text/csv",
 )
 
 # -----------------------------
 # Sources
 # -----------------------------
-st.subheader("📚 Sources")
-st.markdown("""
-1. World Bank Open Data, World Development Indicators (WDI). Dataset indikator lingkungan dan energi yang dipakai pada folder `data/` mengikuti struktur WDI-style (country dan tahun).
-2. Republic of Indonesia. *Second Nationally Determined Contribution (Second NDC)* (2025). Dokumen kerangka komitmen mitigasi Indonesia, termasuk reference year 2019, sektor cakupan, metrik GWP, dan penekanan peaking emisi 2030.
-""")
+with st.expander("📚 Sources dan referensi", expanded=False):
+    wdi_code = WDI_CODES.get(indicator, "lihat metadata WDI untuk indikator terkait")
+    st.markdown(
+        f"""
+**Data**
+1. World Bank, World Development Indicators (WDI). Indikator rujukan: **{wdi_code}**.
 
-st.write("")
-st.caption("Tip: Jika peta menunjukkan banyak negara 'kosong', periksa apakah nama negara di CSV sesuai 'country names' (contoh: 'United States' vs 'United States of America'). Jika perlu, tambahkan kolom ISO3 di file CSV dan beritahu aku, aku bantu sesuaikan mapping.")
+**Dokumen kebijakan**
+2. Republic of Indonesia. Second Nationally Determined Contribution Indonesia, dokumen PDF terintegrasi pada halaman ini.
+
+**Catatan interpretasi**
+3. Pembacaan bersifat deskriptif. Interpretasi tren sebaiknya memeriksa konsistensi antar indikator, perubahan definisi, dan konteks struktural.
+"""
+    )
+    st.link_button("World Bank WDI (home)", "https://databank.worldbank.org/source/world-development-indicators")
+    if isinstance(wdi_code, str) and wdi_code and " " not in wdi_code and "(" not in wdi_code:
+        st.link_button(f"World Bank Indicator {wdi_code}", f"https://data.worldbank.org/indicator/{wdi_code}")
