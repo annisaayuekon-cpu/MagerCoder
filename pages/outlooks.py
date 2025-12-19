@@ -42,14 +42,17 @@ st.markdown(
 # -----------------------------------------------------------------------------
 # 2) SIDEBAR
 # -----------------------------------------------------------------------------
-OECD_LOGO = "https://upload.wikimedia.org/wikipedia/commons/6/6a/OECD_logo.svg"
+OECD_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/OECD_logo.svg/512px-OECD_logo.svg.png"
 
 with st.sidebar:
-    st.image(OECD_LOGO, width=200)
+    st.image(OECD_LOGO, width=180)
     st.title("Navigasi Aksesi OECD")
     st.info(
         "Halaman ini merangkum proses aksesi Indonesia ke OECD, milestone kunci, "
-        "serta struktur Roadmap yang menjadi rujukan review teknis dan reform agenda."
+        "serta struktur Roadmap yang menjadi rujukan review teknis, reform agenda,"
+        "dan alignment Indonesia, OECD, dan World Bank."
+    )
+
     )
 
     st.markdown("### Dokumen & rujukan inti")
