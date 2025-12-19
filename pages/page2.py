@@ -178,7 +178,18 @@ df_long = df.melt(
 
 df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce").astype("Int64")
 df_long = df_long.rename(columns={country_col: "country"})
-df_long["value"] = pd.to_numeric(df_long["value"], errors="coerce")
+# Bersihkan format angka (mis. 55,00 -> 55.00) tanpa merusak angka yang sudah pakai titik
+s = df_long["value"].astype(str).str.strip()
+
+# Jika ada koma tapi tidak ada titik, anggap koma sebagai desimal
+mask_decimal_comma = s.str.contains(",", na=False) & ~s.str.contains(r"\.", na=False)
+s.loc[mask_decimal_comma] = s.loc[mask_decimal_comma].str.replace(",", ".", regex=False)
+
+# Hapus placeholder missing yang umum
+s = s.replace({"..": "", "NA": "", "N/A": "", "nan": ""})
+
+df_long["value"] = pd.to_numeric(s, errors="coerce")
+
 df_long = df_long.dropna(subset=["value", "year"])
 
 if df_long.empty:
