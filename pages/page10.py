@@ -1,6 +1,9 @@
 # pages/page10.py
 import os
 import base64
+import urllib.request
+from urllib.error import URLError, HTTPError
+
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -8,53 +11,38 @@ import streamlit.components.v1 as components
 
 st.set_page_config(layout="wide", page_title="Energi & Lingkungan", page_icon="🌱")
 
-st.title("🌱 Energi & Lingkungan")
-st.write(
-    "Halaman ini menampilkan indikator energi dan lingkungan berbasis file CSV bergaya World Bank yang tersimpan di folder `data/`. "
-    "Tampilan mencakup statistik ringkas nilai terbaru per negara, peta dunia per tahun, interpretasi distribusi, analisis deskriptif, "
-    "time series per negara, serta integrasi dokumen kebijakan Second NDC Indonesia."
-)
-
-with st.expander("📌 Definisi indikator (ringkas)", expanded=False):
-    st.markdown(
-        """
-**CO emissions** menggambarkan emisi karbon dioksida. Pada banyak dataset World Bank, satuan yang umum adalah emisi per kapita. Indikator ini membantu membaca tekanan emisi yang terkait dengan bauran energi, aktivitas ekonomi, dan intensitas konsumsi energi.
-
-**Renewable energy consumption** menggambarkan porsi konsumsi energi yang bersumber dari energi terbarukan dalam total konsumsi energi. Indikator ini membantu membaca arah transisi energi, namun tetap perlu dipadankan dengan tren emisi dan konteks struktur energi.
-
-**Forest area** menggambarkan luasan atau porsi kawasan berhutan. Indikator ini memberi konteks dinamika penyerapan karbon dan perubahan penggunaan lahan, terutama untuk membaca peran sektor FOLU dalam mitigasi.
-
-**Electricity access** menggambarkan persentase populasi yang memiliki akses listrik. Indikator ini sering dipakai sebagai penanda layanan dasar dan pembangunan, lalu dihubungkan dengan konsekuensi emisi melalui bauran pembangkit.
-"""
-    )
-
+# =========================
+# Config
+# =========================
 DATA_DIR = "data"
+
+SNDC_URL = "https://unfccc.int/sites/default/files/2025-10/Indonesia_Second%20NDC_2025.10.24.pdf"
 
 FILES = {
     "CO emissions (metric tons per capita)": [
-        "10.1 CO emissions.csv",
-        "10.1. CO emissions.csv",
         "10.1. CO EMISSIONS.csv",
         "10.1 CO EMISSIONS.csv",
+        "10.1. CO emissions.csv",
+        "10.1 CO emissions.csv",
         "10.1. CO EMISSIONS (per capita).csv",
     ],
     "Renewable energy consumption (% of total)": [
-        "10.2 Renewable energy consumption.csv",
-        "10.2. Renewable energy consumption.csv",
         "10.2. RENEWABLE ENERGY CONSUMPTION.csv",
         "10.2 RENEWABLE ENERGY CONSUMPTION.csv",
+        "10.2. Renewable energy consumption.csv",
+        "10.2 Renewable energy consumption.csv",
     ],
     "Forest area (sq. km or % depending on file)": [
-        "10.3 Forest area.csv",
-        "10.3. Forest area.csv",
         "10.3. FOREST AREA.csv",
         "10.3 FOREST AREA.csv",
+        "10.3. Forest area.csv",
+        "10.3 Forest area.csv",
     ],
     "Electricity access (% of population)": [
-        "10.4 Electricity access.csv",
-        "10.4. Electricity access.csv",
         "10.4. ELECTRICITY ACCESS.csv",
         "10.4 ELECTRICITY ACCESS.csv",
+        "10.4. Electricity access.csv",
+        "10.4 Electricity access.csv",
     ],
 }
 
@@ -142,6 +130,9 @@ AGG_SUBSTR = [
     "members",
 ]
 
+# =========================
+# Helpers
+# =========================
 def is_aggregate_entity(name: str) -> bool:
     if not isinstance(name, str):
         return True
@@ -170,6 +161,8 @@ def orientation(indicator_label: str) -> str:
 
 @st.cache_data
 def load_csv_tolerant(path: str) -> pd.DataFrame:
+    if not os.path.exists(path):
+        return pd.DataFrame()
     for sep in [";", ",", "\t"]:
         try:
             df = pd.read_csv(path, sep=sep, engine="python", on_bad_lines="skip")
@@ -177,13 +170,17 @@ def load_csv_tolerant(path: str) -> pd.DataFrame:
                 return df
         except Exception:
             continue
-    return pd.read_csv(path, engine="python", on_bad_lines="skip")
+    try:
+        return pd.read_csv(path, engine="python", on_bad_lines="skip")
+    except Exception:
+        return pd.DataFrame()
 
 def pick_existing_file(candidates: list[str]) -> str | None:
     for fname in candidates:
         p = os.path.join(DATA_DIR, fname)
         if os.path.exists(p):
             return p
+
     if os.path.isdir(DATA_DIR):
         all_files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".csv")]
         for cand in candidates:
@@ -191,6 +188,7 @@ def pick_existing_file(candidates: list[str]) -> str | None:
             for f in all_files:
                 if key in f.lower():
                     return os.path.join(DATA_DIR, f)
+
     return None
 
 def clean_numeric_series(raw: pd.Series) -> pd.Series:
@@ -219,25 +217,17 @@ def find_country_col(cols) -> str:
     return cols[0]
 
 @st.cache_data
-def read_pdf_bytes(path: str) -> bytes | None:
-    if not os.path.exists(path):
+def fetch_pdf_bytes(url: str, timeout_sec: int = 25) -> bytes | None:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            return resp.read()
+    except (HTTPError, URLError, TimeoutError):
         return None
-    with open(path, "rb") as f:
-        return f.read()
+    except Exception:
+        return None
 
-def resolve_sndc_path() -> str | None:
-    # UPDATED: file name is "Second NDC Indonesia.pdf"
-    candidates = [
-        "Second NDC Indonesia.pdf",
-        os.path.join("assets", "Second NDC Indonesia.pdf"),
-        os.path.join("docs", "Second NDC Indonesia.pdf"),
-    ]
-    for p in candidates:
-        if os.path.exists(p):
-            return p
-    return None
-
-def render_pdf_inline(pdf_bytes: bytes, height: int = 680):
+def render_pdf_inline(pdf_bytes: bytes, height: int = 700):
     b64 = base64.b64encode(pdf_bytes).decode("utf-8")
     html = f"""
     <iframe
@@ -249,9 +239,31 @@ def render_pdf_inline(pdf_bytes: bytes, height: int = 680):
     """
     components.html(html, height=height + 10, scrolling=True)
 
-# -----------------------------
-# Pilih indikator dan load data
-# -----------------------------
+# =========================
+# Header
+# =========================
+st.write(
+    "Halaman ini menampilkan indikator energi dan lingkungan berbasis file CSV bergaya World Bank yang tersimpan di folder `data/`. "
+    "Tampilan mencakup statistik ringkas nilai terbaru per negara, peta dunia per tahun, interpretasi distribusi, analisis deskriptif, "
+    "time series per negara, serta integrasi dokumen kebijakan Second NDC Indonesia."
+)
+
+with st.expander("📌 Definisi indikator (ringkas)", expanded=False):
+    st.markdown(
+        """
+**CO emissions** menggambarkan emisi karbon dioksida. Pada banyak dataset World Bank, satuan yang umum adalah emisi per kapita. Indikator ini membantu membaca tekanan emisi yang terkait dengan bauran energi, aktivitas ekonomi, dan intensitas konsumsi energi.
+
+**Renewable energy consumption** menggambarkan porsi konsumsi energi yang bersumber dari energi terbarukan dalam total konsumsi energi. Indikator ini membantu membaca arah transisi energi, namun tetap perlu dipadankan dengan tren emisi dan konteks struktur energi.
+
+**Forest area** menggambarkan luasan atau porsi kawasan berhutan. Indikator ini memberi konteks dinamika penyerapan karbon dan perubahan penggunaan lahan, terutama untuk membaca peran sektor FOLU dalam mitigasi.
+
+**Electricity access** menggambarkan persentase populasi yang memiliki akses listrik. Indikator ini sering dipakai sebagai penanda layanan dasar dan pembangunan, lalu dihubungkan dengan konsekuensi emisi melalui bauran pembangkit.
+"""
+    )
+
+# =========================
+# Pick indicator and load CSV
+# =========================
 available = {}
 for label, candidates in FILES.items():
     p = pick_existing_file(candidates)
@@ -273,9 +285,9 @@ if df.empty:
 st.subheader("📄 Preview Data Mentah")
 st.dataframe(df.head(15), use_container_width=True)
 
-# -----------------------------
-# Transform ke long format
-# -----------------------------
+# =========================
+# Transform to long
+# =========================
 cols = [str(c) for c in df.columns]
 cols_lower = [c.lower().strip() for c in cols]
 
@@ -289,8 +301,8 @@ if "year" in cols_lower:
             rename_map[c] = "country"
         if cl == "year":
             rename_map[c] = "year"
-    df2 = df.rename(columns=rename_map)
 
+    df2 = df.rename(columns=rename_map)
     if "country" not in df2.columns or "year" not in df2.columns:
         st.error("Kolom country atau year tidak ditemukan pada format long.")
         st.stop()
@@ -312,12 +324,16 @@ else:
         st.stop()
 
     country_col = find_country_col(df.columns)
-    df_long = df.melt(
-        id_vars=[country_col],
-        value_vars=year_cols,
-        var_name="year",
-        value_name="value",
-    ).rename(columns={country_col: "country"}).copy()
+    df_long = (
+        df.melt(
+            id_vars=[country_col],
+            value_vars=year_cols,
+            var_name="year",
+            value_name="value",
+        )
+        .rename(columns={country_col: "country"})
+        .copy()
+    )
 
     df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce")
     df_long["value"] = clean_numeric_series(df_long["value"])
@@ -331,9 +347,9 @@ if df_long.empty:
     st.error("Data kosong setelah menghapus agregat regional dan kelompok pendapatan.")
     st.stop()
 
-# -----------------------------
-# Statistik ringkas nilai terbaru per negara
-# -----------------------------
+# =========================
+# Latest snapshot stats
+# =========================
 st.subheader("🔎 Statistik Ringkas (nilai terbaru per negara)")
 
 df_latest = (
@@ -354,9 +370,9 @@ with c2:
     st.markdown("**Bottom 10 (terendah)**")
     st.dataframe(bottom10[["country", "latest_value"]], use_container_width=True, hide_index=True)
 
-# -----------------------------
-# Second NDC lens yang mengikuti indikator
-# -----------------------------
+# =========================
+# Second NDC lens (indicator-aware)
+# =========================
 lens = SNDC_LENS.get(indicator)
 if lens:
     with st.expander("📌 Second NDC lens untuk indikator yang dipilih", expanded=True):
@@ -365,9 +381,9 @@ if lens:
             st.write(f"• {p}")
         st.caption("Lens ini dipakai sebagai konteks membaca tren, bukan sebagai klaim kausal.")
 
-# -----------------------------
-# Peta dunia
-# -----------------------------
+# =========================
+# World map
+# =========================
 years = sorted(df_long["year"].unique().tolist())
 year_min = int(min(years))
 year_max = int(max(years))
@@ -429,9 +445,9 @@ else:
         st.error("Peta gagal dibuat. Nama negara perlu sesuai standar Plotly.")
         st.exception(e)
 
-# -----------------------------
-# Interpretasi peta
-# -----------------------------
+# =========================
+# Map interpretation
+# =========================
 st.subheader("🧠 Interpretasi peta (tahun terpilih)")
 
 vals = df_map["value"].dropna()
@@ -463,9 +479,9 @@ else:
             "Pembacaan yang lebih kuat memeriksa konsistensi tren dan keterkaitannya dengan faktor struktural seperti infrastruktur dan tata kelola."
         )
 
-# -----------------------------
-# Grafik time series per negara
-# -----------------------------
+# =========================
+# Time series
+# =========================
 st.subheader("📈 Time Series per Negara")
 
 country_list = sorted(df_long["country"].dropna().unique().tolist())
@@ -493,11 +509,13 @@ else:
     )
     fig_ts.update_layout(margin={"l": 0, "r": 0, "t": 40, "b": 0})
     st.plotly_chart(fig_ts, use_container_width=True)
-    st.dataframe(df_ts.reset_index(drop=True), use_container_width=True)
 
-# =============================
-# TEMUAN UTAMA / ANALISIS DATA
-# =============================
+    with st.expander("📄 Data time series (opsional)", expanded=False):
+        st.dataframe(df_ts.reset_index(drop=True), use_container_width=True)
+
+# =========================
+# Narrative (kept)
+# =========================
 st.subheader("🔍 Temuan Utama & Interpretasi Data")
 
 st.markdown(
@@ -542,9 +560,6 @@ Indikator **Forest area** sering merefleksikan trade off antara ekspansi ekonomi
 """
 )
 
-# =============================
-# TAMBAHAN: SECOND NDC INDONESIA
-# =============================
 st.markdown(
     """
 ### 6️⃣ Second NDC Indonesia sebagai Lensa Interpretasi Indikator
@@ -567,33 +582,31 @@ st.success(
     "Pembacaan yang lebih kuat memadankan indikator energi, emisi, layanan dasar, dan kondisi lingkungan dalam satu narasi."
 )
 
-# -----------------------------
-# Integrasi dokumen PDF Second NDC
-# -----------------------------
+# =========================
+# Integrated SNDC document (URL)
+# =========================
 with st.expander("📄 Dokumen kebijakan: Second NDC Indonesia (PDF)", expanded=False):
-    sndc_path = resolve_sndc_path()
-    if sndc_path is None:
-        st.warning("File PDF belum ditemukan. Pastikan nama file persis: `Second NDC Indonesia.pdf` dan berada di root repo atau folder assets.")
-    else:
-        pdf_bytes = read_pdf_bytes(sndc_path)
-        if pdf_bytes is None:
-            st.warning("File PDF ditemukan tetapi tidak bisa dibaca.")
-        else:
-            st.markdown("Ringkasan poin kunci yang dipakai sebagai konteks pembacaan halaman ini:")
-            for msg in SNDC_KEY_MESSAGES:
-                st.write(f"• {msg}")
-            st.download_button(
-                "⬇ Download PDF Second NDC",
-                data=pdf_bytes,
-                file_name="Second NDC Indonesia.pdf",
-                mime="application/pdf",
-            )
-            st.caption("Preview di bawah ini diambil langsung dari file PDF yang ada di repo.")
-            render_pdf_inline(pdf_bytes, height=720)
+    st.link_button("Buka dokumen di UNFCCC", SNDC_URL)
+    st.markdown("Ringkasan poin kunci yang dipakai sebagai konteks pembacaan halaman ini:")
+    for msg in SNDC_KEY_MESSAGES:
+        st.write(f"• {msg}")
 
-# -----------------------------
-# Download data long format
-# -----------------------------
+    pdf_bytes = fetch_pdf_bytes(SNDC_URL)
+    if pdf_bytes is None:
+        st.warning("PDF tidak bisa diambil dari link saat ini. Coba refresh, atau cek koneksi.")
+    else:
+        st.download_button(
+            "⬇ Download PDF Second NDC",
+            data=pdf_bytes,
+            file_name="Indonesia_SecondNDC_2025.10.24.pdf",
+            mime="application/pdf",
+        )
+        st.caption("Preview di bawah ini diambil langsung dari file PDF di UNFCCC.")
+        render_pdf_inline(pdf_bytes, height=720)
+
+# =========================
+# Download long-format (button only)
+# =========================
 st.subheader("📘 Data Lengkap (long format)")
 csv_bytes = df_long.to_csv(index=False).encode("utf-8")
 safe = (
@@ -610,9 +623,9 @@ st.download_button(
     mime="text/csv",
 )
 
-# -----------------------------
+# =========================
 # Sources
-# -----------------------------
+# =========================
 with st.expander("📚 Sources dan referensi", expanded=False):
     wdi_code = WDI_CODES.get(indicator, "lihat metadata WDI untuk indikator terkait")
     st.markdown(
@@ -621,7 +634,7 @@ with st.expander("📚 Sources dan referensi", expanded=False):
 1. World Bank, World Development Indicators (WDI). Indikator rujukan: **{wdi_code}**.
 
 **Dokumen kebijakan**
-2. Republic of Indonesia. Second Nationally Determined Contribution Indonesia, dokumen PDF terintegrasi pada halaman ini.
+2. UNFCCC. Indonesia Second NDC PDF (diakses melalui tautan pada halaman ini).
 
 **Catatan interpretasi**
 3. Pembacaan bersifat deskriptif. Interpretasi tren sebaiknya memeriksa konsistensi antar indikator, perubahan definisi, dan konteks struktural.
