@@ -1,4 +1,3 @@
-# pages/page10.py
 import streamlit as st
 import pandas as pd
 import os
@@ -324,6 +323,35 @@ Negara dengan emisi dan konsumsi energi tinggi cenderung mengalami tekanan terha
 sementara negara dengan hutan luas belum tentu memiliki emisi rendah jika aktivitas ekstraktif meningkat.
 """)
 
+# =============================
+# TAMBAHAN: SECOND NDC INDONESIA
+# =============================
+
+st.markdown("""
+### 6️⃣ Second NDC Indonesia (2025) sebagai Lensa Interpretasi Indikator
+
+Second Nationally Determined Contribution (Second NDC) Indonesia menempatkan pembacaan data emisi dan energi
+dalam kerangka target nasional yang lebih eksplisit. Dokumen ini menggunakan **reference year 2019**, mencakup
+lima sektor **Energy, IPPU, Waste, Agriculture, dan FOLU**, serta memakai metrik **Global Warming Potential (GWP)
+100 tahun** untuk konsistensi perhitungan emisi setara CO₂. Dalam proyeksi 2025–2035, dokumen menekankan bahwa
+**puncak emisi nasional ditargetkan pada 2030**, lalu lintasan emisi perlu mengarah ke target **Net Zero Emissions 2060
+atau lebih cepat**.
+
+Implikasinya terhadap pembacaan indikator di halaman ini:
+
+1. **CO₂ emissions** dan **Renewable energy consumption** dapat dibaca sebagai sinyal arah transisi energi.
+   Tren penurunan emisi per kapita bersamaan dengan kenaikan pangsa energi terbarukan lebih konsisten
+   dengan upaya menjaga peaking 2030 dan menguatkan dekarbonisasi sektor energi.
+
+2. **Electricity access** memberi konteks pembangunan yang setara. Kenaikan akses listrik penting untuk
+   pertumbuhan dan kesejahteraan, namun konsekuensi emisinya bergantung pada bauran energi yang dipakai.
+   Dalam kerangka Second NDC, perluasan akses idealnya diiringi perbaikan efisiensi dan peningkatan porsi energi bersih.
+
+3. **Forest area** relevan untuk membaca dinamika FOLU. Stabilitas atau peningkatan tutupan hutan mendukung
+   strategi pengendalian deforestasi, restorasi, dan penguatan penyerapan karbon, yang menjadi bagian penting
+   dalam target lintas sektor.
+""")
+
 st.success("""
 🔎 **Kesimpulan Umum**  
 Analisis lintas indikator menunjukkan bahwa pembangunan berkelanjutan 
@@ -345,6 +373,15 @@ st.download_button(
     file_name=f"page10_{safe_name}_{year_select}.csv",
     mime="text/csv"
 )
+
+# -----------------------------
+# Sources
+# -----------------------------
+st.subheader("📚 Sources")
+st.markdown("""
+1. World Bank Open Data, World Development Indicators (WDI). Dataset indikator lingkungan dan energi yang dipakai pada folder `data/` mengikuti struktur WDI-style (country dan tahun).
+2. Republic of Indonesia. *Second Nationally Determined Contribution (Second NDC)* (2025). Dokumen kerangka komitmen mitigasi Indonesia, termasuk reference year 2019, sektor cakupan, metrik GWP, dan penekanan peaking emisi 2030.
+""")
 
 st.write("")
 st.caption("Tip: Jika peta menunjukkan banyak negara 'kosong', periksa apakah nama negara di CSV sesuai 'country names' (contoh: 'United States' vs 'United States of America'). Jika perlu, tambahkan kolom ISO3 di file CSV dan beritahu aku, aku bantu sesuaikan mapping.")
