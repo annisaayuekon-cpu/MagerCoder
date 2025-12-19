@@ -229,6 +229,75 @@ with right:
     st.table(agg.tail(10).sort_values("latest_value", ascending=True).style.format({"latest_value": "{:,.2f}"}))
 
 # -----------------------------
+# ANALISIS KESEHATAN TERPADU
+# -----------------------------
+# AUTO ANALISIS DINAMIS
+# -----------------------------
+st.subheader("🧠 Analisis Kesehatan Terpadu")
+
+top_countries = agg.head(5)["country"].tolist()
+bottom_countries = agg.tail(5)["country"].tolist()
+
+indicator_lower = indicator.lower()
+
+# ===== TEMPLATE ANALISIS =====
+if "health expenditure" in indicator_lower:
+    analysis_text = f"""
+Berdasarkan **{indicator}**, negara dengan pengeluaran kesehatan tertinggi seperti
+**{", ".join(top_countries)}** menunjukkan kapasitas fiskal yang relatif besar
+dalam membiayai sektor kesehatan.
+
+Namun, tingginya belanja kesehatan **tidak selalu mencerminkan hasil kesehatan yang lebih baik**,
+karena dipengaruhi oleh efisiensi sistem, struktur pembiayaan, dan ketimpangan akses layanan.
+
+Sebaliknya, negara dengan pengeluaran lebih rendah seperti **{", ".join(bottom_countries)}**
+sering kali memiliki sistem kesehatan yang lebih efisien atau beban biaya layanan yang lebih terkendali.
+"""
+
+elif "infant mortality" in indicator_lower:
+    analysis_text = f"""
+Indikator **{indicator}** menunjukkan bahwa negara dengan angka kematian bayi tertinggi
+seperti **{", ".join(top_countries)}** umumnya menghadapi keterbatasan layanan kesehatan dasar,
+masalah gizi, sanitasi yang buruk, serta kondisi sosial ekonomi yang rentan.
+
+Sebaliknya, negara dengan angka terendah seperti **{", ".join(bottom_countries)}**
+mencerminkan keberhasilan sistem kesehatan ibu dan anak,
+serta akses layanan medis dan nutrisi yang lebih baik.
+"""
+
+elif "maternal mortality" in indicator_lower:
+    analysis_text = f"""
+Pada indikator **{indicator}**, negara dengan rasio kematian ibu tertinggi
+seperti **{", ".join(top_countries)}** umumnya memiliki keterbatasan fasilitas persalinan,
+rendahnya cakupan tenaga medis terlatih, dan akses layanan kesehatan reproduksi yang terbatas.
+
+Negara dengan rasio terendah seperti **{", ".join(bottom_countries)}**
+menunjukkan sistem kesehatan maternal yang lebih kuat dan merata.
+"""
+
+elif "drinking water" in indicator_lower or "water" in indicator_lower:
+    analysis_text = f"""
+Untuk indikator **{indicator}**, negara dengan akses tertinggi seperti
+**{", ".join(top_countries)}** umumnya memiliki infrastruktur dasar yang sangat baik,
+terutama dalam penyediaan air bersih dan sanitasi.
+
+Sebaliknya, negara dengan akses terendah seperti **{", ".join(bottom_countries)}**
+menghadapi keterbatasan infrastruktur yang berdampak langsung pada kesehatan masyarakat,
+khususnya peningkatan risiko penyakit menular dan kematian bayi.
+"""
+
+else:
+    analysis_text = f"""
+Indikator **{indicator}** menunjukkan adanya perbedaan capaian kesehatan yang signifikan
+antar negara. Negara dengan nilai tertinggi seperti **{", ".join(top_countries)}**
+dan negara dengan nilai terendah seperti **{", ".join(bottom_countries)}**
+mencerminkan ketimpangan kapasitas sistem kesehatan dan infrastruktur dasar.
+"""
+
+st.markdown(analysis_text)
+
+
+# -----------------------------
 # Download
 # -----------------------------
 st.subheader("📥 Ekspor Data (long format)")

@@ -1,532 +1,252 @@
-# pages/home.py
-
 import streamlit as st
 import pandas as pd
-import os
 import plotly.express as px
+import plotly.graph_objects as go
+import os
 
+# --- 1. KONFIGURASI HALAMAN ---
 st.set_page_config(
-    page_title="Ringkasan Dashboard Ekonomi",
+    page_title="World Bank Data Dashboard",
     layout="wide",
-    page_icon="🏠",
+    initial_sidebar_state="collapsed",
+    page_icon="🌍"
 )
 
-DATA_DIR = "data"
+# --- 2. CUSTOM CSS ---
+st.markdown("""
+<style>
+    html, body, [class*="css"] { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    .main-header { font-size: 2.5rem; font-weight: bold; color: #333; margin-bottom: 0px; }
+    .sub-header { font-size: 1rem; color: #666; margin-bottom: 20px; }
+    .filter-bar { background-color: #009FDA; padding: 20px; color: white; margin-bottom: 20px; border-radius: 4px; }
+    .metric-container { display: flex; gap: 15px; margin-bottom: 20px; }
+    .metric-card { flex: 1; padding: 20px; color: white; border-radius: 0px; min-height: 120px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .card-blue { background-color: #00B5E2; }
+    .card-green { background-color: #00A651; }
+    .card-orange { background-color: #F39200; }
+    .card-red { background-color: #E74C3C; }
+    .metric-value { font-size: 1.8rem; font-weight: bold; }
+    .metric-label { font-size: 0.9rem; margin-top: 5px; opacity: 0.9; }
+    .stSelectbox label, .stSlider label { color: white !important; }
+    .section-title { font-size: 1.4rem; color: #444; font-weight: 600; border-bottom: 3px solid #009FDA; padding-bottom: 5px; margin-top: 30px; margin-bottom: 20px; }
+</style>
+""", unsafe_allow_html=True)
 
-# -------------------------------------------------
-# Semua indikator yang tersedia
-# -------------------------------------------------
-FILES = {
-    # 1.x – Output & income
-    "GDP (current US$)": "1.1. GDP (CURRENT US$).csv",
-    "GDP per capita": "1.2. GDP PER CAPITA.csv",
-    "GDP growth (%)": "1.3 GDP growth (%).csv",
-    "GNI": "1.4 Gross National Income (GNI).csv",
-    "GDP by sector": "1.5 GDP by sector (pertanian, industri, jasa).csv",
+# --- 3. DAFTAR EXCLUDE (FILTER NEGARA) ---
+# Daftar eksplisit untuk entitas yang sering muncul
+EXCLUDED_ENTITIES = [
+    "World", "High income", "Low income", "Lower middle income", "Upper middle income",
+    "Low & middle income", "Middle income", "OECD members", "Euro area", "European Union",
+    "IDA & IBRD total", "IBRD only", "IDA total", "IDA blend", "IDA only",
+    "Heavily indebted poor countries (HIPC)", "Least developed countries: UN classification",
+    "Arab World", "Central Europe and the Baltics", "Other small states", 
+    "Pacific island small states", "Caribbean small states", "Small states"
+]
 
-    # 2.x – Labour
-    "Labor force participation": "2.1 Labor force participation rate.csv",
-    "Unemployment rate": "2.2 Unemployment rate.csv",
-    "Youth unemployment": "2.3 Youth unemployment.csv",
-    "Employment by sector": "2.4 Employment by sector.csv",
+# Kata kunci untuk filter "Pintar" (Menghapus entitas yang mengandung kata-kata ini)
+STRATEGIC_KEYWORDS = [
+    r"dividend", r"income", r"total", r"countries", r"&", r"only", 
+    r"situations", r"demographic", r"sub-saharan", r"east asia", r"europe", 
+    r"latin america", r"middle east", r"north africa", r"south asia"
+]
 
-    # 3.x – Prices & demand
-    "Inflation (CPI)": "3.1 Inflation, consumer prices (%).csv",
-    "Consumer expenditure": "3.2. CONSUMER EXPENDITURE.csv",
-
-    # 4.x – Trade
-    "Exports of goods and services": "4.1 Exports of goods and services.csv",
-    "Imports of goods and services": "4.2 Imports of goods and services.csv",
-    "Tariff rates": "4.3 Tariff rates.csv",
-    "Trade openness": "4.4 Trade openness.csv",
-
-    # 5.x – Investment
-    "Foreign direct investment (FDI)": "5.1 Foreign Direct Investment (FDI).csv",
-    "Gross capital formation": "5.2 Gross capital formation.csv",
-
-    # 6.x – Poverty & inequality
-    "Poverty headcount ratio at $4.20 a day": "6.1. POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
-    "Gini index": "6.2. GINI INDEX.csv",
-    "Income share held by lowest 20%": "6.3. INCOME SHARE HELD BY LOWER 20%.csv",
-
-    # 7.x – Population & demography
-    "Total population": "7.1. TOTAL POPULATION.csv",
-    "Urban population": "7.2. URBAN POPULATION.csv",
-    "Fertility rate": "7.3. FERTILITY RATE.csv",
-    "Life expectancy at birth": "7.4. LIFE EXPECTANCY AT BIRTH.csv",
-
-    # 8.x – Education
-    "School enrollment": "8.1. SCHOOL ENROLLMENT.csv",
-    "Government expenditure on education": "8.2. GOVERNMENT EXPENDITURE ON EDUCATION.csv",
-
-    # 9.x – Health & water
-    "Health expenditure": "9.1. HEALTH EXPENDITURE.csv",
-    "Maternal mortality": "9.2. MATERNAL MORTALITY.csv",
-    "Infant mortality": "9.3. INFANT MORTALITY.csv",
-    "People using safely managed drinking water": "9.4. PEOPLE USING SAFELY MANAGED DRINKING WATER.csv",
-
-    # 10.x – Environment & energy
-    "CO emissions": "10.1. CO EMISSIONS.csv",
-    "Renewable energy consumption": "10.2. RENEWABLE ENERGY CONSUMPTION.csv",
-    "Forest area": "10.3. FOREST AREA.csv",
-    "Electricity access": "10.4. ELECTRICITY ACCESS.csv",
-}
-
-# -------------------------------------------------
-# Daftar agregat regional / income group / forum
-# yang di-exclude dari Top/Bottom 10
-# -------------------------------------------------
-EXCLUDED_AGGREGATES = {
-    # Income level
-    "High income",
-    "Low income",
-    "Lower middle income",
-    "Upper middle income",
-    "Middle income",
-    "Low & middle income",
-
-    # Lending group
-    "IDA & IBRD total",
-    "IDA only",
-    "IDA total",
-    "IDA blend",
-    "IBRD only",
-
-    # Region & sub-region utama World Bank
-    "World",
-    "Euro area",
-    "European Union",
-    "OECD members",
-    "Arab World",
-
-    "East Asia & Pacific",
-    "East Asia & Pacific (excluding high income)",
-    "East Asia & Pacific (IDA & IBRD countries)",
-
-    "Europe & Central Asia",
-    "Europe & Central Asia (excluding high income)",
-    "Europe & Central Asia (IDA & IBRD countries)",
-    "Central Europe and the Baltics",
-
-    "Latin America & Caribbean",
-    "Latin America & Caribbean (excluding high income)",
-    "Latin America & Caribbean (IDA & IBRD countries)",
-    "Latin America & the Caribbean (IDA & IBRD countries)",
-
-    "Middle East & North Africa",
-    "Middle East & North Africa (excluding high income)",
-    "Middle East & North Africa (IDA & IBRD countries)",
-
-    "North America",
-
-    "South Asia",
-    "South Asia (IDA & IBRD)",
-
-    "Sub-Saharan Africa",
-    "Sub-Saharan Africa (excluding high income)",
-    "Sub-Saharan Africa (IDA & IBRD countries)",
-
-    "Africa Eastern and Southern",
-    "Africa Western and Central",
-
-    # Small states & special groups
-    "Small states",
-    "Other small states",
-    "Caribbean small states",
-    "Pacific island small states",
-    "Not classified",
-
-    "Fragile and conflict affected situations",
-    "Heavily indebted poor countries (HIPC)",
-    "Least developed countries: UN classification",
-
-    # Demographic dividend groups
-    "Pre-demographic dividend",
-    "Early-demographic dividend",
-    "Late-demographic dividend",
-    "Post-demographic dividend",
-
-    # Kelompok kawasan khusus lain
-    "Middle East, North Africa, Afghanistan & Pakistan",
-}
-
-# -------------------------------------------------
-# Helper: tolerant CSV loader
-# -------------------------------------------------
+# --- 4. FUNGSI LOAD DATA ---
 @st.cache_data
-def load_csv(path: str) -> pd.DataFrame:
-    """Baca CSV dengan delimiter fleksibel dan lewati baris bermasalah."""
-    if not os.path.exists(path):
-        return pd.DataFrame()
-    for sep in [";", ",", "\t"]:
-        try:
-            df = pd.read_csv(
-                path,
-                sep=sep,
-                engine="python",
-                on_bad_lines="skip",
-            )
-            if df.shape[1] > 1:
-                return df
-        except Exception:
-            continue
-    return pd.read_csv(path, engine="python", on_bad_lines="skip")
-
-
-def detect_year_columns(df: pd.DataFrame):
-    return [c for c in df.columns if str(c).isdigit() and len(str(c)) == 4]
-
-
-def ensure_iso3(df: pd.DataFrame):
-    lower_cols = [c.lower() for c in df.columns]
-    for cand in ("iso3", "iso_code", "iso"):
-        if cand in lower_cols:
-            return df.columns[lower_cols.index(cand)]
-    return None
-
-
-def pivot_long_first_numeric(df: pd.DataFrame) -> pd.DataFrame:
-    """Ubah ke format long: country, year, value."""
-    years = detect_year_columns(df)
-    if not years:
-        return pd.DataFrame()
-    idcol = df.columns[0]
-    long = df.melt(
-        id_vars=[idcol],
-        value_vars=years,
-        var_name="year",
-        value_name="value",
-    )
-    long = long.rename(columns={idcol: "country"})
-    long["year"] = pd.to_numeric(long["year"], errors="coerce").astype("Int64")
-    long["value"] = pd.to_numeric(long["value"], errors="coerce")
-    long = long.dropna(subset=["value", "year"])
-    long["year"] = long["year"].astype(int)
-    return long
-
-
-def latest_value(df: pd.DataFrame):
-    """Ambil rata-rata global tahun terakhir dalam dataframe wide."""
-    years = detect_year_columns(df)
-    if not years:
-        return None, None
-    sorted_years = sorted([int(y) for y in years])
-    last = str(sorted_years[-1])
-    vals = pd.to_numeric(df[last], errors="coerce").dropna()
-    if vals.empty:
-        return None, last
-    return float(vals.mean()), last
-
-
-def exclude_aggregates(df: pd.DataFrame) -> pd.DataFrame:
-    """Hilangkan agregat regional/kelompok dari dataframe ranking."""
-    if "country" not in df.columns:
-        return df
-    return df[~df["country"].isin(EXCLUDED_AGGREGATES)]
-
-
-# -------------------------------------------------
-# Header
-# -------------------------------------------------
-st.markdown(
-    "<h1 style='margin:0;'>📊 Ringkasan Dashboard Ekonomi</h1>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    "Ringkasan cepat indikator makro, sosial, dan lingkungan. "
-    "Pilih indikator & tahun untuk melihat peta dan ranking negara."
-)
-
-# -------------------------------------------------
-# Controls atas: indikator & tahun (untuk peta & ranking)
-# -------------------------------------------------
-indicator_list = list(FILES.keys())
-indicator_selected = st.selectbox(
-    "Pilih indikator untuk peta & ranking",
-    indicator_list,
-    index=0,
-)
-
-file_sel = FILES.get(indicator_selected, "")
-df_sel = load_csv(os.path.join(DATA_DIR, file_sel)) if file_sel else pd.DataFrame()
-long_sel = pivot_long_first_numeric(df_sel) if not df_sel.empty else pd.DataFrame()
-
-years_sel = sorted(long_sel["year"].unique().tolist()) if not long_sel.empty else []
-if years_sel:
-    year_selected = st.select_slider(
-        "Pilih tahun acuan untuk peta & ranking "
-        "(nilai terbaru ≤ tahun ini akan digunakan)",
-        years_sel,
-        value=years_sel[-1],
-    )
-else:
-    year_selected = None
-
-st.write("")
-
-# -------------------------------------------------
-# Ringkasan Cepat – KPI per negara & per tahun
-# -------------------------------------------------
-st.subheader("Ringkasan Cepat")
-
-kpi_names = [
-    "GDP growth (%)",
-    "GDP per capita",
-    "Unemployment rate",
-    "Inflation (CPI)",
-]
-
-kpi_data = {}
-kpi_countries = set()
-kpi_years = set()
-
-for name in kpi_names:
-    fname = FILES.get(name, "")
-    df_k = load_csv(os.path.join(DATA_DIR, fname)) if fname else pd.DataFrame()
-    long_k = pivot_long_first_numeric(df_k)
-    if not long_k.empty:
-        kpi_data[name] = long_k
-        kpi_countries.update(long_k["country"].dropna().unique().tolist())
-        kpi_years.update(long_k["year"].dropna().unique().tolist())
-
-country_options = sorted(kpi_countries) if kpi_countries else []
-year_options_kpi = sorted(kpi_years) if kpi_years else []
-
-if country_options and year_options_kpi:
-    default_country_idx = (
-        country_options.index("Indonesia")
-        if "Indonesia" in country_options
-        else 0
-    )
-    kpi_country = st.selectbox(
-        "Pilih negara untuk KPI",
-        country_options,
-        index=default_country_idx,
-    )
-    kpi_year = st.selectbox(
-        "Pilih tahun untuk KPI",
-        year_options_kpi,
-        index=len(year_options_kpi) - 1,
-    )
-else:
-    kpi_country = None
-    kpi_year = None
-    st.warning(
-        "Data KPI (GDP growth, GDP per capita, pengangguran, inflasi) "
-        "belum tersedia lengkap."
-    )
-
-col1, col2, col3, col4 = st.columns(4, gap="large")
-
-
-def render_kpi_card(col, title, emoji, long_df, country, year):
-    """Kartu KPI: ambil nilai terbaru ≤ tahun yang dipilih."""
-    colors = {
-        "GDP growth (%)": "#ffe8d6",
-        "GDP per capita": "#e8f6ff",
-        "Unemployment rate": "#fff0f6",
-        "Inflation (CPI)": "#f0fff4",
-    }
-    bg = colors.get(title, "#f7f7f7")
-
-    value = None
-    shown_year = year
-
-    if (
-        long_df is not None
-        and not long_df.empty
-        and country is not None
-        and year is not None
-    ):
-        sub = long_df[long_df["country"] == country]
-        sub = sub[sub["year"] <= int(year)]
-        if not sub.empty:
-            last_row = sub.sort_values("year").iloc[-1]
-            value = float(last_row["value"])
-            shown_year = int(last_row["year"])
-
-    display = "—" if value is None else f"{value:,.2f}"
-    subtitle = (
-        f"{country}, {shown_year}"
-        if (country is not None and shown_year is not None)
-        else "Data tidak tersedia"
-    )
-
-    card_html = f"""
-    <div style="background:{bg}; padding:14px; border-radius:8px;">
-      <div style="font-size:20px;">{emoji} <strong>{title}</strong></div>
-      <div style="font-size:28px; margin-top:6px;">{display}</div>
-      <div style="color:gray; font-size:12px;">{subtitle}</div>
-    </div>
-    """
-    col.markdown(card_html, unsafe_allow_html=True)
-
-
-for (title, emoji), col in zip(
-    zip(kpi_names, ["📈", "💰", "👥", "🔥"]),
-    (col1, col2, col3, col4),
-):
-    render_kpi_card(
-        col,
-        title,
-        emoji,
-        kpi_data.get(title),
-        kpi_country,
-        kpi_year,
-    )
-
-st.write("---")
-
-# -------------------------------------------------
-# Mini trend – agregat global (rata-rata)
-# -------------------------------------------------
-st.subheader("Tren Singkat")
-
-m1, m2, m3, m4 = st.columns(4)
-mini_titles = [
-    "GDP growth (%)",
-    "Inflation (CPI)",
-    "Foreign direct investment (FDI)",
-    "CO emissions",
-]
-
-for title, col in zip(mini_titles, (m1, m2, m3, m4)):
-    csv = FILES.get(title, "")
-    df = load_csv(os.path.join(DATA_DIR, csv)) if csv else pd.DataFrame()
-    long = pivot_long_first_numeric(df)
-    col.markdown(f"**{title}**")
-    if not long.empty:
-        agg = long.groupby("year")["value"].mean().reset_index()
-        fig = px.line(agg, x="year", y="value")
-        fig.update_layout(height=140, margin=dict(t=6, b=6, l=6, r=6))
-        col.plotly_chart(fig, use_container_width=True)
-    else:
-        col.write("tidak tersedia")
-
-st.write("---")
-
-# -------------------------------------------------
-# Map (choropleth) & ranking (Top/Bottom 10 negara)
-# -------------------------------------------------
-st.subheader("Peta Dunia & Ranking Negara")
-
-map_col, table_col = st.columns([2, 1])
-
-with map_col:
-    if year_selected is None or long_sel.empty:
-        st.info("Pilih indikator dan pastikan data tersedia untuk melihat peta.")
-    else:
-        df_up_to = long_sel[long_sel["year"] <= int(year_selected)]
-        if df_up_to.empty:
-            st.info("Tidak ada data hingga tahun yang dipilih.")
-        else:
-            df_year = (
-                df_up_to.sort_values(["country", "year"])
-                .groupby("country", as_index=False)
-                .tail(1)
-            )
-
-            iso_col = ensure_iso3(df_sel)
-            title_map = (
-                f"{indicator_selected} — nilai terbaru per negara "
-                f"(≤ {year_selected})"
-            )
-
-            if iso_col and iso_col in df_sel.columns:
-                iso_df = df_sel[[df_sel.columns[0], iso_col]].rename(
-                    columns={df_sel.columns[0]: "country"}
-                )
-                df_year = df_year.merge(iso_df, on="country", how="left")
-                loc_col = iso_col
-                fig = px.choropleth(
-                    df_year,
-                    locations=loc_col,
-                    color="value",
-                    hover_name="country",
-                    hover_data={"year": True},
-                    color_continuous_scale="Viridis",
-                    title=title_map,
-                )
-            else:
-                fig = px.choropleth(
-                    df_year,
-                    locations="country",
-                    locationmode="country names",
-                    color="value",
-                    hover_name="country",
-                    hover_data={"year": True},
-                    color_continuous_scale="Viridis",
-                    title=title_map,
-                )
-
-            fig.update_layout(margin=dict(t=40, r=0, l=0, b=0))
-            st.plotly_chart(fig, use_container_width=True, height=520)
-
-with table_col:
-    st.markdown("### Top / Bottom 10 (negara saja)")
-    if year_selected is None or long_sel.empty:
-        st.write("Data tidak tersedia")
-    else:
-        df_up_to = long_sel[long_sel["year"] <= int(year_selected)]
-        if df_up_to.empty:
-            st.write("Tidak ada data hingga tahun yang dipilih.")
-        else:
-            df_year = (
-                df_up_to.sort_values(["country", "year"])
-                .groupby("country", as_index=False)
-                .tail(1)
-            )
-
-            # buang regional, income group, multilateral aggregates
-            df_year = exclude_aggregates(df_year)
-
-            if df_year.empty:
-                st.write("Tidak ada data negara (non-regional) untuk tahun ini.")
-            else:
-                df_sorted = df_year.sort_values("value", ascending=False)
-                top_n = df_sorted.head(10)[["country", "value"]].reset_index(drop=True)
-                bottom_n = (
-                    df_sorted.tail(10)[["country", "value"]]
-                    .reset_index(drop=True)
-                )
-
-                st.markdown("**Top 10**")
-                st.table(top_n.style.format({"value": "{:,.2f}"}))
-                st.markdown("**Bottom 10**")
-                st.table(bottom_n.style.format({"value": "{:,.2f}"}))
-
-st.write("---")
-
-# -------------------------------------------------
-# Ringkasan indikator lain (grid)
-# -------------------------------------------------
-st.subheader("Ringkasan Indikator Lainnya")
-
-files_items = list(FILES.items())
-for i in range(0, len(files_items), 3):
-    trio = files_items[i: i + 3]
-    cols = st.columns(3)
-    for (label, fname), col in zip(trio, cols):
-        df = load_csv(os.path.join(DATA_DIR, fname)) if fname else pd.DataFrame()
-        val, yr = latest_value(df)
-        col.markdown(f"**{label}**")
-        if val is None:
-            col.write("tidak tersedia")
-        else:
-            col.metric(f"Tahun {yr}", f"{val:,.2f}")
-        long = pivot_long_first_numeric(df)
-        if not long.empty:
-            agg = long.groupby("year")["value"].mean().reset_index().tail(8)
+def load_and_clean_data(filename):
+    filepath = os.path.join("data", filename)
+    if not os.path.exists(filepath): return None
+    
+    found_df = None
+    for header_idx in [0, 1, 2, 3]: 
+        for sep in [';', ',']:
             try:
-                fig = px.line(agg, x="year", y="value")
-                fig.update_layout(height=100, margin=dict(t=6, b=6, l=6, r=6))
-                col.plotly_chart(fig, use_container_width=True)
-            except Exception:
-                pass
+                temp_df = pd.read_csv(filepath, sep=sep, header=header_idx)
+                temp_df.columns = temp_df.columns.astype(str).str.strip()
+                has_country = any(col.lower() in ['country name', 'country', 'economy'] for col in temp_df.columns)
+                has_year = any(col.isdigit() and len(col) == 4 for col in temp_df.columns) or 'Year' in temp_df.columns
+                if has_country and has_year:
+                    found_df = temp_df
+                    break 
+            except: continue
+        if found_df is not None: break
+            
+    if found_df is None: return None
+        
+    df = found_df
+    try:
+        for c in df.columns:
+            if c.lower() in ['country name', 'country', 'economy']:
+                df = df.rename(columns={c: 'Country Name'})
+                break
 
-st.write("---")
-st.info(
-    "Gunakan menu di sidebar (Page 1–10) untuk melihat halaman detail per kelompok "
-    "indikator. Jika peta atau ranking kosong, periksa nama file di folder 'data/' "
-    "dan format kolom tahunnya (mis. 2000, 2001, ...)."
-)
+        if 'Year' in df.columns:
+            if 'Value' not in df.columns:
+                metadata = ['Country Name', 'Country Code', 'Year', 'Unnamed: 0']
+                vals = [c for c in df.columns if c not in metadata]
+                if vals: df = df.rename(columns={vals[0]: 'Value'})
+            df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+            df['Value'] = pd.to_numeric(df['Value'], errors='coerce')
+            return df.dropna(subset=['Value'])
+        else:
+            year_cols = [c for c in df.columns if c.isdigit() and len(c) == 4]
+            if not year_cols: return None
+            id_vars = [c for c in df.columns if c not in year_cols]
+            df_melted = df.melt(id_vars=id_vars, value_vars=year_cols, var_name='Year', value_name='Value')
+            df_melted['Year'] = pd.to_numeric(df_melted['Year'], errors='coerce')
+            df_melted['Value'] = pd.to_numeric(df_melted['Value'], errors='coerce')
+            return df_melted.dropna(subset=['Value'])
+    except: return None
+
+# --- 5. STRUKTUR FILE ---
+FILES_STRUCTURE = {
+    "1. Ekonomi Makro": {
+        "GDP (Current US$)": "1.1. GDP (CURRENT US$).csv",
+        "GDP Per Capita": "1.2. GDP PER CAPITA.csv",
+        "GDP Growth (%)": "1.3 GDP growth (%).csv",
+        "GNI": "1.4 Gross National Income (GNI).csv",
+        "GDP by Sector": "1.5 GDP by sector (pertanian, industri, jasa).csv"
+    },
+    "2. Ketenagakerjaan": {
+        "Labor Force Participation": "2.1 Labor force participation rate.csv",
+        "Unemployment Rate": "2.2 Unemployment rate.csv",
+    },
+    "3. Inflasi & Konsumsi": {
+        "Inflation (Consumer Prices)": "3.1 Inflation, consumer prices (%).csv",
+        "Consumer Expenditure": "3.2. CONSUMER EXPENDITURE.csv"
+    },
+    "4. Perdagangan": {
+        "Exports": "4.1 Exports of goods and services.csv",
+        "Imports": "4.2 Imports of goods and services.csv",
+        "Tariff Rates": "4.3 Tariff rates.csv",
+        "Trade Openness": "4.4 Trade openness.csv"
+    },
+    "5. Investasi": {
+        "FDI (Foreign Direct Investment)": "5.1 Foreign Direct Investment (FDI).csv",
+    },
+    "6. Sosial (Kemiskinan & Ketimpangan)": {
+        "Poverty Headcount ($4.20)": "6.1. POVERTY HEADCOUNT RATIO AT $4.20 A DAY.csv",
+        "Gini Index": "6.2. GINI INDEX.csv",
+        "Income Share Lowest 20%": "6.3 INCOME SHARE HELD BY LOWER 20%.csv"
+    },
+    "7. Demografi": {
+        "Total Population": "7.1. TOTAL POPULATION.csv",
+        "Urban Population": "7.2. URBAN POPULATION.csv",
+        "Fertility Rate": "7.3. FERTILITY RATE.csv",
+        "Life Expectancy": "7.4. LIFE EXPECTANCY AT BIRTH.csv"
+    },
+    "8. Pendidikan": {
+        "School Enrollment": "8.1. SCHOOL ENROLLMENT.csv",
+        "Govt Expenditure on Education": "8.2. GOVENRMENT EXPENDITURE ON EDUCATION.csv"
+    },
+    "9. Kesehatan": {
+        "Health Expenditure": "9.1. HEALTH EXPENDITURE.csv",
+        "Maternal Mortality": "9.2. MATERNAL MORTALITY.csv",
+        "Infant Mortality": "9.3. INFANT MORTALITY.csv",
+        "Drinking Water Access": "9.4. PEOPLE USING SAFELY MANAGED DRINKING WATER SERVICES.csv"
+    },
+    "10. Lingkungan & Energi": {
+        "CO2 Emissions": "10.1. CO EMISSIONS.csv",
+        "Renewable Energy Consumption": "10.2. RENEWABLE ENERGY CONSUMPTION.csv",
+        "Forest Area": "10.3. FOREST AREA.csv",
+        "Electricity Access": "10.4. ELECTRICITY ACCESS.csv"
+    }
+}
+
+# --- 6. HEADER & NAVIGASI ---
+st.markdown('<div class="main-header">World Bank Data Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Interactive visualization for global development indicators.</div>', unsafe_allow_html=True)
+
+with st.container():
+    st.markdown('<div class="filter-bar">', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1.5, 2, 1.5])
+    with col1:
+        selected_category = st.selectbox("1. Select Category", list(FILES_STRUCTURE.keys()))
+    with col2:
+        available_files = FILES_STRUCTURE[selected_category]
+        selected_indicator_name = st.selectbox("2. Select Indicator", list(available_files.keys()))
+        selected_filename = available_files[selected_indicator_name]
+    with col3:
+        year_range = st.slider("3. Filter Year Range", 1990, 2024, (2000, 2023))
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- 7. VISUALISASI ---
+df = load_and_clean_data(selected_filename)
+
+if df is not None and not df.empty:
+    # --- LOGIKA FILTERING PINTAR (HANYA NEGARA) ---
+    if selected_category == "1. Ekonomi Makro":
+        if 'Country Name' in df.columns:
+            # 1. Hapus berdasarkan daftar pasti
+            df = df[~df['Country Name'].isin(EXCLUDED_ENTITIES)]
+            # 2. Hapus berdasarkan kata kunci (Grup IDA, Dividend, dll)
+            pattern = '|'.join(STRATEGIC_KEYWORDS)
+            df = df[~df['Country Name'].str.contains(pattern, case=False, na=False)]
+            
+    # Filter Tahun
+    df_filtered = df[(df['Year'] >= year_range[0]) & (df['Year'] <= year_range[1])]
+    
+    if not df_filtered.empty:
+        latest_year = df_filtered['Year'].max()
+        df_latest = df_filtered[df_filtered['Year'] == latest_year]
+        country_col = 'Country Name'
+
+        # KPI CARDS
+        avg_val = df_latest['Value'].mean()
+        total_countries = df_latest[country_col].nunique()
+        top_row = df_latest.loc[df_latest['Value'].idxmax()]
+        val_sum = df_latest['Value'].sum() 
+
+        st.markdown(f"""
+        <div class="metric-container">
+            <div class="metric-card card-blue">
+                <div class="metric-value">{total_countries}</div>
+                <div class="metric-label">Countries ({latest_year})</div>
+            </div>
+            <div class="metric-card card-green">
+                <div class="metric-value">{avg_val:,.2f}</div>
+                <div class="metric-label">Average Value</div>
+            </div>
+            <div class="metric-card card-orange">
+                <div class="metric-value">{str(top_row[country_col])[:15]}..</div>
+                <div class="metric-label">Highest: {top_row['Value']:,.2f}</div>
+            </div>
+            <div class="metric-card card-red">
+                <div class="metric-value">{val_sum:,.0f}</div>
+                <div class="metric-label">Global Sum</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # CHARTS
+        c_left, c_right = st.columns([2, 1])
+        with c_left:
+            st.markdown('<div class="section-title">Trends Over Time (Top 5 Countries)</div>', unsafe_allow_html=True)
+            top_5_names = df_latest.nlargest(5, 'Value')[country_col].tolist()
+            df_trend = df_filtered[df_filtered[country_col].isin(top_5_names)]
+            fig = px.line(df_trend, x="Year", y="Value", color=country_col, markers=True, color_discrete_sequence=px.colors.qualitative.Bold)
+            fig.update_traces(fill='tozeroy')
+            fig.update_layout(height=450, legend=dict(orientation="h", y=1.1, x=0))
+            st.plotly_chart(fig, use_container_width=True)
+            
+        with c_right:
+            st.markdown(f'<div class="section-title">Top 10 Ranking ({latest_year})</div>', unsafe_allow_html=True)
+            df_rank = df_latest.nlargest(10, 'Value').sort_values('Value', ascending=True)
+            fig_bar = px.bar(df_rank, x="Value", y=country_col, orientation='h', color="Value", color_continuous_scale="Viridis")
+            fig_bar.update_layout(height=450, coloraxis_showscale=False, yaxis_title=None)
+            st.plotly_chart(fig_bar, use_container_width=True)
+
+        # MAP
+        st.markdown('<div class="section-title">Global Map Visualization</div>', unsafe_allow_html=True)
+        code_col = 'Country Code' if 'Country Code' in df_latest.columns else country_col
+        loc_mode = "ISO-3" if 'Country Code' in df_latest.columns else "country names"
+        fig_map = px.choropleth(df_latest, locations=code_col, locationmode=loc_mode, color="Value", hover_name=country_col, color_continuous_scale="Blues")
+        fig_map.update_layout(height=600, margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig_map, use_container_width=True)
+
+        # RAW DATA
+        st.markdown('<div class="section-title">Data Explorer</div>', unsafe_allow_html=True)
+        st.dataframe(df_filtered.sort_values(['Year', 'Value'], ascending=[False, False]), use_container_width=True)
+    else:
+        st.warning("No data found for the selected filters.")
+else:
+    st.error("Dataset not found or empty.")

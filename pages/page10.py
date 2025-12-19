@@ -250,6 +250,89 @@ with col_bot:
     st.markdown("**Bottom 10 (terendah)**")
     st.table(agg_latest.tail(10).sort_values("latest_value", ascending=True).style.format({"latest_value": "{:,.2f}"}))
 
+
+# =============================
+# TEMUAN UTAMA / ANALISIS DATA
+# =============================
+
+st.subheader("🔍 Temuan Utama & Interpretasi Data")
+
+st.markdown("""
+### 1️⃣ Emisi CO₂ Tidak Selalu Mencerminkan Tingkat Industrialisasi
+
+Berdasarkan indikator **CO₂ emissions**, beberapa negara yang muncul pada kelompok nilai tertinggi 
+tidak seluruhnya merupakan negara dengan tingkat industrialisasi yang tinggi atau memiliki kegiatan industri yang maju. 
+Hal ini menunjukkan bahwa **tingginya emisi CO₂ tidak dapat langsung diinterpretasikan sebagai tingkat industrialisasi yang tinggi**.
+
+Pada negara-negara berkembang atau wilayah konflik, emisi dapat meningkat akibat:
+- penggunaan energi fosil yang tidak efisien,
+- ketergantungan pada pembangkit listrik berbasis diesel,
+- keterbatasan teknologi ramah lingkungan,
+- serta lemahnya infrastruktur energi.
+
+Dengan demikian, emisi CO₂ yang tinggi pada kelompok negara ini lebih mencerminkan **inefisiensi sistem energi**, 
+bukan kekuatan dari industrialisasinya.
+""")
+
+st.markdown("""
+### 2️⃣ Karakteristik Negara Industri Maju
+
+Negara-negara industri seperti **Jepang, Jerman, dan Belgia** menunjukkan pola yang berbeda, yaitu:
+- emisi CO₂ relatif tinggi namun **lebih stabil secara time series**,
+- tingkat **akses listrik mendekati 100%**,
+- serta peningkatan penggunaan **energi terbarukan**.
+
+Pola ini mencerminkan bahwa negara industri cenderung telah memasuki fase 
+**pengelolaan emisi dan transisi energi**, bukan sekadar ekspansi produksi.
+""")
+
+st.markdown("""
+### 3️⃣ Akses Listrik sebagai Indikator Fundamental Pembangunan Suatu Negara
+
+Indikator **Electricity Access** menunjukkan kesenjangan yang jelas antar negara.
+Negara dengan akses listrik rendah umumnya memiliki:
+- aktivitas ekonomi terbatas,
+- tingkat industrialisasi rendah,
+- serta emisi CO₂ yang rendah bukan karena keberlanjutan, 
+  melainkan keterbatasan pembangunan.
+
+Sebaliknya, akses listrik yang tinggi merupakan prasyarat utama bagi pertumbuhan industri 
+dan tolok ukur dalam pembangunan ekonomi dan kesejahteraan suatu negara.
+""")
+
+st.markdown("""
+### 4️⃣ Energi Terbarukan dan Struktur Energi Negara Berkembang
+
+Beberapa negara berkembang menunjukkan proporsi **energi terbarukan yang relatif tinggi**.
+Namun, hal ini sering kali disebabkan oleh:
+- ketergantungan pada biomassa dan hidro tradisional,
+- bukan karena adopsi teknologi energi hijau yang maju.
+
+Oleh karena itu, tingginya pangsa energi terbarukan pada negara tertentu 
+perlu diinterpretasikan dengan hati-hati dan tidak selalu mencerminkan keberhasilan transisi energi.
+""")
+
+st.markdown("""
+### 5️⃣ Forest Area dan Trade-off Pembangunan
+
+Indikator **Forest Area** menunjukkan adanya trade-off antara:
+- ekspansi ekonomi,
+- pembangunan energi,
+- dan keberlanjutan lingkungan.
+
+Negara dengan emisi dan konsumsi energi tinggi cenderung mengalami tekanan terhadap luas hutan, 
+sementara negara dengan hutan luas belum tentu memiliki emisi rendah jika aktivitas ekstraktif meningkat.
+""")
+
+st.success("""
+🔎 **Kesimpulan Umum**  
+Analisis lintas indikator menunjukkan bahwa pembangunan berkelanjutan 
+tidak dapat diukur hanya dari satu indikator lingkungan. 
+Pendekatan multidimensi diperlukan untuk memahami hubungan antara energi, lingkungan, 
+dan tingkat pembangunan ekonomi.
+""")
+
+
 # -----------------------------
 # Download Full Data (long)
 # -----------------------------
