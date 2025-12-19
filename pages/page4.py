@@ -5,11 +5,27 @@ import plotly.express as px
 
 st.set_page_config(layout="wide")
 
-st.title("🌐 Perdagangan Internasional — Ekspor, Impor, Trade Openness & Tarif")
+st.title("🌐 Perdagangan Internasional — Peta Dunia + Time Series")
 st.write(
     "Halaman ini menampilkan indikator perdagangan internasional "
     "berdasarkan data referensi lokal (file CSV) yang ada di folder `data/`."
 )
+
+# -----------------------------------------------------------------------------
+# PANDUAN INTERPRETASI (ringkas)
+# -----------------------------------------------------------------------------
+with st.expander("📌 Panduan interpretasi indikator (ringkas)", expanded=False):
+    st.markdown(
+        """
+**Exports of goods and services** merekam nilai ekspor barang dan jasa. Angka tinggi biasanya terkait kapasitas produksi dan akses pasar luar negeri, tetapi perlu dibaca bersama struktur komoditas, basis manufaktur, dan siklus permintaan global.
+
+**Imports of goods and services** merekam nilai impor barang dan jasa. Angka tinggi sering muncul pada ekonomi yang terintegrasi dalam rantai pasok global atau membutuhkan input impor untuk produksi domestik.
+
+**Tariff rates** menggambarkan tingkat pungutan bea masuk atas impor. Angka lebih tinggi umumnya menambah friksi perdagangan dan dapat mengubah struktur insentif produksi, tetapi dampak bersihnya tetap bergantung pada desain tarif dan kebijakan non-tarif.
+
+**Trade openness** dipakai sebagai proksi intensitas perdagangan relatif terhadap ukuran ekonomi. Angka tinggi mengarah pada eksposur yang lebih besar terhadap arus global dan guncangan eksternal, sementara angka rendah lebih mudah dipahami jika disejajarkan dengan ukuran ekonomi dan struktur sektor.
+"""
+    )
 
 # -----------------------------
 # Lokasi folder data & mapping file
@@ -19,12 +35,12 @@ DATA_DIR = "data"
 FILES = {
     "Exports of goods and services": "4.1 Exports of goods and services.csv",
     "Imports of goods and services": "4.2 Imports of goods and services.csv",
-    "Trade openness": "4.3 Trade openness.csv",
-    "Tariff rates": "4.4 Tariff rates.csv",
+    "Tariff rates": "4.3 Tariff rates.csv",
+    "Trade openness": "4.4 Trade openness.csv",
 }
 
 # -----------------------------
-# Helper baca CSV (toleran)
+# Helper baca CSV (lebih toleran)
 # -----------------------------
 @st.cache_data
 def load_csv_tolerant(path: str) -> pd.DataFrame:
@@ -37,22 +53,66 @@ def load_csv_tolerant(path: str) -> pd.DataFrame:
                 path,
                 sep=sep,
                 engine="python",
-                on_bad_lines="skip",
+                on_bad_lines="skip"
             )
-            # kalau cuma 1 kolom besar, kemungkinan delimiter salah
             if df.shape[1] > 1:
                 return df
         except Exception:
             continue
 
-    # fallback: biarkan pandas tebak sendiri
     df = pd.read_csv(
         path,
         engine="python",
-        on_bad_lines="skip",
+        on_bad_lines="skip"
     )
     return df
 
+
+def _to_float(x):
+    try:
+        return float(x)
+    except Exception:
+        return None
+
+
+def _fmt(v, digits=2):
+    v = _to_float(v)
+    if v is None:
+        return "NA"
+    return f"{v:,.{digits}f}"
+
+
+def _orientation(label: str) -> str:
+    """
+    Mengatur arah interpretasi: tarif yang lebih tinggi umumnya berarti friksi perdagangan lebih besar.
+    """
+    if "Tariff" in label:
+        return "higher_worse"
+    return "neutral"
+
+
+def _interpret_note(label: str) -> str:
+    if label == "Exports of goods and services":
+        return (
+            "Pada indikator ini, posisi relatif yang lebih tinggi biasanya mencerminkan kapasitas ekspor yang lebih besar pada tahun terpilih. "
+            "Pembacaan yang rapi tetap memeriksa apakah dominasi ekspor berbasis komoditas atau manufaktur, karena implikasinya ke volatilitas berbeda."
+        )
+    if label == "Imports of goods and services":
+        return (
+            "Pada indikator ini, posisi relatif yang lebih tinggi sering sejalan dengan integrasi rantai pasok dan kebutuhan input impor. "
+            "Nilai rendah tidak otomatis berarti substitusi impor berhasil karena bisa terkait hambatan logistik atau keterbatasan kapasitas produksi."
+        )
+    if label == "Tariff rates":
+        return (
+            "Pada indikator ini, posisi relatif yang lebih tinggi umumnya berarti friksi tarif lebih kuat. "
+            "Efeknya lebih bermakna jika dibaca bersama struktur tarif, barang yang dilindungi, dan kebijakan non-tarif."
+        )
+    if label == "Trade openness":
+        return (
+            "Pada indikator ini, posisi relatif yang lebih tinggi berarti eksposur yang lebih besar pada perdagangan global. "
+            "Angka ini lebih informatif jika dibaca bersama ukuran ekonomi dan komposisi sektor."
+        )
+    return "Interpretasi bersifat indikatif dan perlu dibaca bersama konteks statistik dan struktur ekonomi negara."
 
 # -----------------------------
 # Cek file yang tersedia
@@ -73,7 +133,7 @@ if not available_indicators:
 # Pilih indikator & load data
 # -----------------------------
 indicator_label = st.selectbox(
-    "Pilih indikator perdagangan", available_indicators
+    "Pilih indikator perdagangan internasional", available_indicators
 )
 file_path = os.path.join(DATA_DIR, FILES[indicator_label])
 
@@ -106,7 +166,6 @@ for cand in ["Country Name", "country", "Country", "Negara", "Entity"]:
         break
 
 if country_col is None:
-    # fallback: anggap kolom pertama adalah nama negara
     country_col = df.columns[0]
 
 # Ubah ke format long: country, year, value
@@ -119,6 +178,19 @@ df_long = df.melt(
 
 df_long["year"] = pd.to_numeric(df_long["year"], errors="coerce").astype("Int64")
 df_long = df_long.rename(columns={country_col: "country"})
+
+# Bersihkan format angka (mis. 55,00 -> 55.00) tanpa merusak angka yang sudah pakai titik
+s = df_long["value"].astype(str).str.strip()
+
+# Jika ada koma tapi tidak ada titik, anggap koma sebagai desimal
+mask_decimal_comma = s.str.contains(",", na=False) & ~s.str.contains(r"\.", na=False)
+s.loc[mask_decimal_comma] = s.loc[mask_decimal_comma].str.replace(",", ".", regex=False)
+
+# Hapus placeholder missing yang umum
+s = s.replace({"..": "", "NA": "", "N/A": "", "nan": ""})
+
+df_long["value"] = pd.to_numeric(s, errors="coerce")
+
 df_long = df_long.dropna(subset=["value", "year"])
 
 if df_long.empty:
@@ -140,7 +212,7 @@ selected_year = st.slider(
 
 df_map = df_long[df_long["year"] == selected_year]
 
-st.subheader(f"🗺️ Peta Dunia — {indicator_label} ({selected_year})")
+st.subheader(f"🌍 Peta Dunia — {indicator_label} ({selected_year})")
 
 if df_map.empty:
     st.warning("Tidak ada data untuk tahun yang dipilih.")
@@ -165,6 +237,141 @@ else:
             f"Detail error: {e}"
         )
 
+# -----------------------------------------------------------------------------
+# INTERPRETASI PETA
+# -----------------------------------------------------------------------------
+st.subheader("🧠 Interpretasi peta (tahun terpilih)")
+
+vals = df_map["value"].dropna()
+n_countries = int(vals.shape[0])
+
+if n_countries < 5:
+    st.write("Data pada tahun terpilih terlalu sedikit untuk interpretasi distribusi.")
+else:
+    q25, q50, q75 = vals.quantile([0.25, 0.50, 0.75]).tolist()
+
+    colA, colB, colC, colD = st.columns(4)
+    colA.metric("Jumlah negara (ada data)", f"{n_countries:,}")
+    colB.metric("Kuartil 1 (Q1)", _fmt(q25))
+    colC.metric("Median (Q2)", _fmt(q50))
+    colD.metric("Kuartil 3 (Q3)", _fmt(q75))
+
+    if indicator_label == "Tariff rates":
+        para2 = (
+            "Untuk tarif, angka yang lebih tinggi dibaca sebagai friksi tarif yang lebih kuat pada tahun tersebut. "
+            "Pembacaan yang tegas menilai apakah sebuah negara sudah melampaui Q3 atau masih berada di sekitar median. "
+            "Nilai yang sangat rendah lebih masuk akal jika dibaca bersama struktur tarif, non-tariff measures, dan profil industri."
+        )
+    elif indicator_label == "Trade openness":
+        para2 = (
+            "Untuk trade openness, angka yang lebih tinggi dibaca sebagai eksposur perdagangan yang lebih besar. "
+            "Pembacaan yang tegas menilai apakah sebuah negara berada di atas Q3 atau dekat median, lalu mengaitkannya dengan ukuran ekonomi dan struktur sektor. "
+            "Angka rendah lebih mudah dipahami jika ukuran ekonominya besar atau basis permintaan domestik dominan."
+        )
+    elif indicator_label == "Exports of goods and services":
+        para2 = (
+            "Untuk ekspor, angka yang lebih tinggi dibaca sebagai kapasitas ekspor yang lebih besar pada tahun tersebut. "
+            "Pembacaan yang tegas menilai apakah sebuah negara sudah melampaui Q3 atau masih berada di sekitar median. "
+            "Interpretasi perlu mempertimbangkan apakah ekspor didorong komoditas atau manufaktur, karena pola risikonya berbeda."
+        )
+    else:
+        para2 = (
+            "Untuk impor, angka yang lebih tinggi dibaca sebagai intensitas impor yang lebih besar pada tahun tersebut. "
+            "Pembacaan yang tegas menilai apakah sebuah negara sudah melampaui Q3 atau masih berada di sekitar median. "
+            "Angka rendah tidak otomatis berarti substitusi impor berhasil karena bisa terkait hambatan logistik atau daya beli."
+        )
+
+    st.markdown(
+        f"""
+Ringkasan kuartil memecah negara menjadi empat kelompok pada tahun terpilih. Pakai median sebagai patokan untuk menilai posisi relatif. Pakai Q1 dan Q3 untuk menilai extreme point, di mana apabila di bawah Q1 berarti termasuk kelompok terbawah, di atas Q3 berarti masuk kelompok teratas.
+
+{para2}
+"""
+    )
+    st.caption(_interpret_note(indicator_label))
+
+# -----------------------------------------------------------------------------
+# ANALISIS DESKRIPTIF
+# -----------------------------------------------------------------------------
+st.subheader("🧠 Analisis Ekonomi Deskriptif")
+
+if df_map.empty:
+    st.write("Analisis deskriptif membutuhkan data pada tahun yang dipilih.")
+else:
+    df_rank = (
+        df_map[["country", "value"]]
+        .dropna()
+        .sort_values("value", ascending=False)
+    )
+
+    top_n = 5
+    bottom_n = 5
+    top_c = df_rank.head(top_n)["country"].tolist()
+    bottom_c = df_rank.tail(bottom_n)["country"].tolist()
+
+    top_str = ", ".join(top_c) if top_c else "NA"
+    bottom_str = ", ".join(bottom_c) if bottom_c else "NA"
+
+    vals = df_rank["value"]
+    vmin = float(vals.min())
+    vmax = float(vals.max())
+    q25, q50, q75 = vals.quantile([0.25, 0.50, 0.75]).tolist()
+    iqr = float(q75 - q25)
+
+    st.markdown(
+        f"""
+Berdasarkan nilai terbaru **{indicator_label}** pada **{selected_year}**, terlihat perbedaan yang jelas antar negara.
+
+• **Kelompok nilai tertinggi didominasi oleh:** **{top_str}**  
+• **Kelompok nilai terendah didominasi oleh:** **{bottom_str}**
+
+Rentang nilai pada tahun ini bergerak dari **{_fmt(vmin)}** hingga **{_fmt(vmax)}**, dengan median **{_fmt(q50)}** dan rentang antar kuartil (Q3–Q1) sebesar **{_fmt(iqr)}**. Analisis ini bersifat deskriptif, tanpa inferensi kausal.
+"""
+    )
+
+    if indicator_label == "Tariff rates":
+        st.markdown(
+            """
+Pada tarif, negara di kelompok atas (di atas Q3) biasanya menandakan hambatan tarif yang relatif lebih kuat. Perbedaan angka sering terkait desain proteksi sektoral, strategi industrial, dan respons terhadap tekanan eksternal. Nilai rendah lebih konsisten dengan rezim tarif yang lebih terbuka, tetapi pembacaan tetap memeriksa instrumen non-tarif.
+"""
+        )
+    elif indicator_label == "Trade openness":
+        st.markdown(
+            """
+Pada trade openness, angka tinggi sering muncul pada ekonomi kecil yang sangat terintegrasi dengan perdagangan global, sementara ekonomi besar bisa tampak lebih “tertutup” secara rasio meski nilai perdagangannya besar. Peta menjadi lebih bermakna jika dibaca sebagai eksposur relatif, lalu dibandingkan dengan struktur sektor dan kerentanan terhadap guncangan eksternal.
+"""
+        )
+    elif indicator_label == "Exports of goods and services":
+        st.markdown(
+            """
+Pada ekspor, posisi tinggi bisa mencerminkan basis produksi dan akses pasar yang kuat, tetapi karakter ekspornya penting. Ekspor berbasis komoditas cenderung lebih sensitif pada siklus harga dunia. Ekspor berbasis manufaktur biasanya lebih terkait kapasitas industri, produktivitas, dan integrasi rantai pasok.
+"""
+        )
+    else:
+        st.markdown(
+            """
+Pada impor, posisi tinggi sering konsisten dengan kebutuhan input impor, pola konsumsi, atau integrasi rantai pasok. Nilai impor yang tinggi tidak selalu “buruk” karena dapat mencerminkan aktivitas produksi yang kuat. Yang lebih informatif adalah pembacaan bersama ekspor, kurs, dan komposisi barang yang diperdagangkan.
+"""
+        )
+
+    st.caption("Catatan: Analisis ini bersifat deskriptif dan tidak dimaksudkan sebagai inferensi kausal.")
+
+    with st.expander("📚 Referensi jurnal (tautan) — dasar interpretasi", expanded=False):
+        st.markdown(
+            """
+[1] Gravity model, trade costs, dan friksi perdagangan.  
+[2] Keterkaitan perdagangan dan pertumbuhan (evidence lintas negara).  
+[3] Trade liberalization dan dinamika pertumbuhan.  
+[4] Heterogenitas perusahaan dan respons ekspor.  
+[5] Tarif, hambatan perdagangan, dan implikasi kebijakan perdagangan.
+"""
+        )
+        st.link_button("American Economic Review (AER)", "https://www.aeaweb.org/journals/aer")
+        st.link_button("Journal of International Economics", "https://www.sciencedirect.com/journal/journal-of-international-economics")
+        st.link_button("Journal of Development Economics", "https://www.sciencedirect.com/journal/journal-of-development-economics")
+        st.link_button("World Development", "https://www.sciencedirect.com/journal/world-development")
+        st.link_button("Review of Economics and Statistics", "https://direct.mit.edu/rest")
+
 # -----------------------------
 # Time series per negara
 # -----------------------------
@@ -175,7 +382,10 @@ selected_country = st.selectbox(
     "Pilih negara untuk grafik time series", country_list
 )
 
-df_country = df_long[df_long["country"] == selected_country].sort_values("year")
+df_country = (
+    df_long[df_long["country"] == selected_country]
+    .sort_values("year")
+)
 
 if df_country.empty:
     st.write("Tidak ada data time series untuk negara ini.")
@@ -192,6 +402,69 @@ else:
         yaxis_title=indicator_label,
     )
     st.plotly_chart(fig_ts, use_container_width=True)
+
+    # -----------------------------------------------------------------------------
+    # INTERPRETASI TIME SERIES
+    # -----------------------------------------------------------------------------
+    st.subheader("🧾 Interpretasi tren (negara terpilih)")
+
+    last_year = int(df_country["year"].max())
+    last_val = float(df_country.loc[df_country["year"] == last_year, "value"].iloc[0])
+
+    start_year_candidate = last_year - 10
+    df_window = df_country[df_country["year"] >= start_year_candidate].copy()
+    if df_window.shape[0] < 2:
+        start_year = int(df_country["year"].min())
+        start_val = float(df_country.loc[df_country["year"] == start_year, "value"].iloc[0])
+        window_label = f"sejak {start_year}"
+    else:
+        start_year = int(df_window["year"].min())
+        start_val = float(df_window.loc[df_window["year"] == start_year, "value"].iloc[0])
+        window_label = f"{start_year}–{last_year}"
+
+    delta = last_val - start_val
+    years_span = max(1, last_year - start_year)
+    avg_change = delta / years_span
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Tahun terakhir", f"{last_year}")
+    col2.metric("Nilai terakhir", _fmt(last_val))
+    col3.metric(f"Perubahan ({window_label})", _fmt(delta))
+    col4.metric("Rata-rata perubahan per tahun", _fmt(avg_change))
+
+    orient = _orientation(indicator_label)
+
+    if orient == "higher_worse":
+        if avg_change > 0:
+            st.markdown(
+                "Tren meningkat pada periode pengamatan mengarah pada friksi tarif yang lebih kuat. "
+                "Validasi biasanya melihat perubahan kebijakan tarif, barang yang dilindungi, dan dinamika impor."
+            )
+        elif avg_change < 0:
+            st.markdown(
+                "Tren menurun pada periode pengamatan mengarah pada pelonggaran friksi tarif. "
+                "Pembacaan yang lebih kuat melihat respons impor, biaya input, dan perubahan komposisi barang yang diperdagangkan."
+            )
+        else:
+            st.markdown(
+                "Nilai relatif stabil pada periode pengamatan. Perubahan kecil tetap bermakna bila level tarif awal tinggi."
+            )
+    else:
+        if avg_change > 0:
+            st.markdown(
+                "Tren meningkat menunjukkan indikator bergerak naik pada periode pengamatan. "
+                "Makna ekonominya lebih tajam jika dibaca bersama kurs, siklus komoditas, dan perubahan struktur perdagangan."
+            )
+        elif avg_change < 0:
+            st.markdown(
+                "Tren menurun menunjukkan indikator melemah pada periode pengamatan. "
+                "Pembacaan yang rapi memeriksa pergeseran permintaan eksternal, shock harga, dan faktor kebijakan."
+            )
+        else:
+            st.markdown(
+                "Nilai relatif stabil pada periode pengamatan. Pola sebelum dan sesudah episode guncangan besar bisa memberi konteks tambahan jika tahun tersedia."
+            )
+
     st.dataframe(df_country.reset_index(drop=True))
 
 # -----------------------------
