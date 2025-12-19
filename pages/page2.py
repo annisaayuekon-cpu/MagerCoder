@@ -255,40 +255,14 @@ else:
     colC.metric("Median (Q2)", _fmt(q50))
     colD.metric("Kuartil 3 (Q3)", _fmt(q75))
 
-        if indicator_label == "Unemployment rate":
-        second_par = (
-            "Untuk pengangguran, cek posisi negara terhadap batas kuartil. "
-            f"Nilai di atas Q3 ({_fmt(q75)}) berarti masuk 25% negara dengan pengangguran tertinggi pada tahun ini. "
-            f"Nilai di bawah Q1 ({_fmt(q25)}) berarti masuk 25% terendah. "
-            "Angka yang sangat rendah tetap perlu dicek bersama konteks informalitas dan definisi “aktif mencari kerja”."
-        )
-    elif indicator_label == "Youth unemployment":
-        second_par = (
-            "Untuk pengangguran pemuda, pembacaan kuartil dipakai dengan cara yang sama. "
-            f"Di atas Q3 ({_fmt(q75)}) berarti kelompok 25% tertinggi. "
-            "Indikator ini biasanya lebih sensitif terhadap siklus ekonomi dan transisi sekolah ke kerja, jadi perubahan tahunan bisa lebih tajam."
-        )
-    elif indicator_label == "Labor force participation rate":
-        second_par = (
-            "Untuk partisipasi angkatan kerja, angka yang lebih tinggi berarti proporsi penduduk usia kerja yang aktif di pasar kerja lebih besar. "
-            f"Di atas Q3 ({_fmt(q75)}) menunjukkan posisi relatif tinggi dibanding mayoritas negara, "
-            f"sedangkan di bawah Q1 ({_fmt(q25)}) menunjukkan posisi relatif rendah. "
-            "Nilai rendah sering terkait struktur demografi, durasi pendidikan, hambatan partisipasi, atau discouraged workers."
-        )
-    else:
-        second_par = (
-            "Untuk penyerapan kerja per sektor, angka dibaca sebagai komposisi. "
-            "Interpretasi paling kuat biasanya membandingkan pergeseran komposisi antar tahun, bukan menilai satu angka sebagai baik atau buruk."
-        )
-
     st.markdown(
-        f"""
-Kuartil membagi negara menjadi empat kelompok pada {selected_year}. Median ({_fmt(q50)}) memisahkan setengah atas dan setengah bawah. Q1 ({_fmt(q25)}) dan Q3 ({_fmt(q75)}) dipakai sebagai batas praktis untuk menilai apakah sebuah negara berada di kelompok rendah, menengah, atau tinggi pada tahun tersebut.
+        """
+Ringkasan kuartil Kuartil memecah negara menjadi empat kelompok pada tahun terpilih. Pakai median sebagai patokan, di mana negara di atas median berada pada setengah distribusi dengan tingkat pengangguran lebih tinggi. Pakai Q1 dan Q3 untuk menilai extreme point, di mana apabila di bawah Q1 berarti termasuk kelompok pengangguran terendah, di atas Q3 berarti masuk kelompok tertinggi.
 
-{second_par}
+Untuk indikator pengangguran, angka yang lebih tinggi dibaca sebagai tekanan pasar kerja yang lebih besar. Angka yang sangat rendah tidak otomatis berarti pasar kerja ‘sehat’, karena bisa dipengaruhi porsi informal yang besar atau perbedaan definisi ‘aktif mencari kerja’.
 """
     )
-
+    st.caption(_interpret_note(indicator_label))
 
 # -----------------------------------------------------------------------------
 # ANALISIS DESKRIPTIF (narasi + rujukan jurnal)
