@@ -251,7 +251,7 @@ st.write(
 with st.expander("📌 Definisi indikator (ringkas)", expanded=False):
     st.markdown(
         """
-**CO emissions** menggambarkan emisi karbon dioksida. Pada banyak dataset World Bank, satuan yang umum adalah emisi per kapita. Indikator ini membantu membaca tekanan emisi yang terkait dengan bauran energi, aktivitas ekonomi, dan intensitas konsumsi energi.
+**CO emissions** menggambarkan emisi karbon dioksida (ekuivalen). Pada banyak dataset World Bank, satuan yang umum adalah emisi per kapita. Indikator ini membantu membaca tekanan emisi yang terkait dengan bauran energi, aktivitas ekonomi, dan intensitas konsumsi energi.
 
 **Renewable energy consumption** menggambarkan porsi konsumsi energi yang bersumber dari energi terbarukan dalam total konsumsi energi. Indikator ini membantu membaca arah transisi energi, namun tetap perlu dipadankan dengan tren emisi dan konteks struktur energi.
 
